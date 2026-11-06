@@ -1,0 +1,90 @@
+# Run PredictX locally (testnet only)
+
+Everything here uses Base Sepolia test funds. Nothing touches Base mainnet: the Swap tab fetches real Flash quotes and never sends an order.
+
+## 0. One-time setup
+
+| Need | How |
+| --- | --- |
+| Node 22, pnpm 9, Foundry, Bun | already used by the repo (`node -v`, `pnpm -v`) |
+| Chainlink `cre` CLI | PowerShell: `irm https://app.chain.link/cre/install.ps1 \| iex`, open a new terminal, then `cre login` and `cre whoami` |
+| MetaMask in Chrome | with two accounts (A bets YES, B bets NO) |
+| Base Sepolia ETH | free from a faucet, for gas: a little in every wallet below |
+
+Create `.env` at the repo root (it is git-ignored): `cp .env.example .env`, then fill in:
+
+| Variable | Used by | Notes |
+| --- | --- | --- |
+| `OPENAI_API_KEY`, `OPENAI_MODEL=gpt-6-luna` | backend | without them the Insight tab shows the basic fallback note |
+| `FLASH_API_KEY`, `FLASH_MOCK=false` | backend | free key from app.definitive.fi (More, Flash). Keep `FLASH_ORDERS_ENABLED=false` |
+| `CRE_ETH_PRIVATE_KEY` | resolver loop | a throwaway wallet with Base Sepolia ETH; it pays gas to deliver settlements |
+| `TEST_WALLET_A_PRIVATE_KEY`, `TEST_WALLET_B_PRIVATE_KEY` | `e2e-lifecycle` and live tests | throwaway wallets with Base Sepolia ETH. Never a real wallet |
+
+If you leave `FLASH_API_KEY` empty keep `FLASH_MOCK=true`: the Swap tab then shows a visible MOCK badge on fake quotes.
+
+## 1. Start everything (four terminals)
+
+```sh
+pnpm install
+
+# 1. backend  -> http://localhost:8787/api/v1/health
+pnpm --filter @predictx/backend start
+
+# 2. dashboard -> http://localhost:5173
+pnpm --filter @predictx/dashboard dev
+
+# 3. settlement loop (checks every minute, runs the Chainlink CRE workflow when a pool is due)
+cd apps/backend
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/resolver-loop.ts
+
+# 4. build the extension, then load it in Chrome
+pnpm --filter @predictx/extension build
+```
+
+Chrome: `chrome://extensions`, Developer mode on, **Load unpacked**, pick `apps/extension/dist`. After every rebuild press the extension's reload icon and refresh x.com.
+
+## 2. Prove the money path first (no browser)
+
+With the backend and the resolver loop running:
+
+```sh
+cd apps/backend
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/e2e-lifecycle.ts --scenario yes    # about 5 min
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/e2e-lifecycle.ts --scenario no
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/e2e-lifecycle.ts --scenario void
+```
+
+Each prints `ok:` lines and a final `DONE` with transaction hashes. Any `CHECK FAILED` is a real bug.
+
+## 3. Walk through it on x.com (two MetaMask accounts)
+
+1. Open `http://localhost:5173/faucet`, connect account A, switch to Base Sepolia, press **Get 100 USDC**. Repeat with account B.
+2. On x.com find or write a post containing `$ETH`. The tag is underlined. Hover it for a moment: the card shows the live price, address and chain.
+   - **Insight**: press *Get insight* (real AI tip; "Use suggested limit" moves it to Swap).
+   - **Swap**: connect, type 2 and press *Get quote*. You see a real Flash quote, the token address and chain, and a disabled *Place order* with "Testnet-only build: orders are not sent."
+3. Press the **PredictX** pill (bottom right), choose a token, Above, a strike, 3 min. The preview is the exact onchain question. Connect, press **Create prediction**, confirm in MetaMask.
+4. Press **Post to X**. The composer opens with the text; press Post. The post now shows the bet box (the `PX#id` marker triggers it).
+5. In the bet box, as account A enter 5 and press **Bet YES** (MetaMask asks to approve exactly 5 USDC, then to bet). Switch MetaMask to account B and bet **NO**. The odds bar updates within seconds.
+6. Wait for the close time plus up to a minute. The resolver loop prints the Chainlink run. The box changes to **Result: YES/NO**, "Settled by Chainlink CRE (simulation)", and the price at close.
+7. The winner presses **Claim**. Check the amount: for a $60/$40 pool with a $30 YES stake the payout is $49.00 (2% fee).
+
+Also open `http://localhost:5173/` (all pools) and `http://localhost:5173/pool/<id>` to see the same pool with your position.
+
+## 4. What is real and what is not
+
+- Real: prices (CoinGecko), AI tips (OpenAI), Flash quotes, the contracts, the bets, the Chainlink workflow code, settlement transactions on Base Sepolia.
+- A simulation: the Chainlink run is `cre workflow simulate --broadcast`, delivered through Chainlink's simulation forwarder (the screen says so). A fully deployed CRE workflow needs a redeployed contract and CRE deploy access.
+- Not done on purpose: no Flash order is ever sent (no testnet exists for Flash).
+- The "price at close" is the price when the loop ran, up to about a minute after the close.
+- Post links use `localhost`, so other people cannot open them. The `PX#id` marker still makes the bet box appear on your own timeline.
+
+## 5. Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| No underline on `$ETH` | backend running? `curl localhost:8787/api/v1/tokens`; reload the extension and the page |
+| Card says "Couldn't load ETH" | backend down, or CoinGecko rate-limited (free tier) |
+| "Install MetaMask to continue." | MetaMask must be enabled for x.com; reload the page |
+| Create fails with "The wallet took too long" | confirm in MetaMask within about a minute, then press Create again |
+| Pool stays "Closed. Waiting for the result..." | is the resolver loop running, `cre whoami` ok, `CRE_ETH_PRIVATE_KEY` funded? |
+| Dev server unreachable from the browser | the dashboard listens on IPv4 and IPv6; try `http://127.0.0.1:5173` |

@@ -10,7 +10,7 @@ PredictX is a Chrome extension for X. When a tweet mentions a coin, such as `$ET
 
 Built for the ETHGlobal Mumbai hackathon. Sponsor tracks: **Chainlink CRE** and **Definitive Flash**.
 
-> **Progress:** backend, smart contracts and the Chainlink workflow work end to end on Base Sepolia. The extension and the dashboard are next. See the **[project tracker](docs/TRACKER.md)** for every task and its completion level.
+> **Progress:** backend, smart contracts, the Chainlink workflow, the Chrome extension and the dashboard are built. Everything runs on **Base Sepolia test funds only**; the Swap tab shows real Flash quotes but never sends an order. Step-by-step local run: **[docs/LOCAL_TEST.md](docs/LOCAL_TEST.md)**. Task status: **[docs/TRACKER.md](docs/TRACKER.md)**.
 
 ## How it fits together
 
@@ -29,7 +29,7 @@ Built for the ETHGlobal Mumbai hackathon. Sponsor tracks: **Chainlink CRE** and 
  Dashboard website: pool pages, claim, faucet (same backend and contract)
 ```
 
-Money rules: prediction pools use **free test funds on Base Sepolia**. Swaps use **real funds on Base mainnet**, capped at $5 per order, or run in mock mode with a visible "MOCK" badge.
+Money rules: prediction pools use **free test funds on Base Sepolia**. Swap quotes come from Definitive Flash (Base mainnet prices); this build never submits an order (`FLASH_ORDERS_ENABLED=false`), so no mainnet funds are ever used.
 
 ## Live on Base Sepolia
 
@@ -56,21 +56,25 @@ pnpm --filter @predictx/backend start       # API on http://localhost:8787/api/v
 | Backend | `pnpm --filter @predictx/backend test` | see [apps/backend/README.md](apps/backend/README.md) |
 | Contracts | `cd contracts && forge test` | see [contracts/README.md](contracts/README.md) |
 | Chainlink workflow | `cd cre/resolve-pools && bun test` | see [cre/README.md](cre/README.md) |
-| Demo pools | | `scripts/seed-pools.ts`, see [scripts/README.md](scripts/README.md) |
+| Shared UI | `pnpm --filter @predictx/ui test` | API client, wallet actions, slip states |
+| Extension | `pnpm --filter @predictx/extension test` | see [apps/extension/README.md](apps/extension/README.md) |
+| Settlement + money path | | `scripts/resolver-loop.ts` and `scripts/e2e-lifecycle.ts`, see [scripts/README.md](scripts/README.md) |
+| Demo pools | | `scripts/seed-pools.ts` |
 
 Keys live only in `.env`, which git ignores. Never commit it. Without an OpenAI key the tips fall back to a basic note; without a Flash key swaps run in mock mode.
 
 ## Repo layout
 
 ```
-apps/backend/       Fastify API: prices, AI tips, Flash swap proxy, pool reads      (done)
-apps/extension/     Chrome extension overlay on x.com                               (next; holds an old design prototype)
-apps/dashboard/     Pool pages, claim, faucet website                               (not started)
-packages/shared/    Shared types, validation, helpers, contract ABI and addresses   (done)
-contracts/          PredictionPool and MockUSDC, Foundry                           (done, deployed)
-cre/                Chainlink CRE workflow that settles pools                        (done)
-scripts/            Seed demo pools, one-off real Flash order (Gate 0)
-docs/               Requirements, API contract, tracker, decisions, work log
+apps/backend/       Fastify API: prices, AI tips, Flash quotes, pool reads            (done)
+apps/extension/     Chrome (MV3) overlay on x.com: hover card, create pool, bet box    (built)
+apps/dashboard/     Pools list, pool page (bet, claim, refund), test USDC faucet       (built)
+packages/shared/    Shared types, validation, helpers, contract ABI and addresses     (done)
+packages/ui/        API client, wallet actions, hooks and React pieces shared by both apps
+contracts/          PredictionPool and MockUSDC, Foundry                              (done, deployed)
+cre/                Chainlink CRE workflow that settles pools                         (done)
+scripts/            Resolver loop, end-to-end lifecycle check, seed pools, Flash Gate 0
+docs/               Requirements, API contract, tracker, decisions, work log, local test guide
 docs/prototype/     Earlier HTML design board, visual reference only
 ```
 
