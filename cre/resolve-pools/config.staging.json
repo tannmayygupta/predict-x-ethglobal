@@ -1,0 +1,8 @@
+{
+  "schedule": "0 */1 * * * *",
+  "chainSelectorName": "ethereum-testnet-sepolia-base-1",
+  "poolAddress": "0x6b0f6C0f324C615Add6BfcA5EE0b8eeD66F2C0cd",
+  "maxPools": 10,
+  "gasLimit": "400000",
+  "coingeckoBaseUrl": "https://api.coingecko.com/api/v3"
+}
