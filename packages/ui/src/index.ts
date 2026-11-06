@@ -1,6 +1,7 @@
 export * from "./actions";
 export * from "./api";
 export * from "./chain";
+export * from "./components/forms";
 export * from "./components/primitives";
 export * from "./components/wallet";
 export * from "./copy";

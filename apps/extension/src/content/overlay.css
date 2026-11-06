@@ -39,3 +39,19 @@
     transition-duration: 0ms !important;
   }
 }
+
+/* Motion only answers an action: the card fades in over 140 ms with a 4 px rise (UI_REFERENCE section 1). */
+@keyframes px-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.px-card-in {
+  animation: px-card-in var(--px-t-card) var(--px-ease);
+}

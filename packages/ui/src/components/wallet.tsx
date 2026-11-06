@@ -51,7 +51,16 @@ export function NetworkPill({ chainId, expected }: { chainId: number | null; exp
 }
 
 /** Connect, show the account and network, or offer the switch. Every action that needs a wallet shows this. */
-export function WalletBar({ controller, expectedChainId }: { controller: WalletController; expectedChainId: number }) {
+export function WalletBar({
+  controller,
+  expectedChainId,
+  needsChain = true,
+}: {
+  controller: WalletController;
+  expectedChainId: number;
+  /** False when the action only needs the address (for example a quote), so a different network is fine. */
+  needsChain?: boolean;
+}) {
   const wallet = useWallet(controller);
   if (wallet.status === "no-wallet") return <Notice kind="warn">{COPY.no_wallet}</Notice>;
   if (wallet.status === "disconnected" || wallet.status === "connecting") {
@@ -64,12 +73,12 @@ export function WalletBar({ controller, expectedChainId }: { controller: WalletC
       </div>
     );
   }
-  const wrong = wallet.chainId !== expectedChainId;
+  const wrong = needsChain && wallet.chainId !== expectedChainId;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
         {wallet.address ? <AddressChip address={wallet.address} /> : null}
-        <NetworkPill chainId={wallet.chainId} expected={expectedChainId} />
+        <NetworkPill chainId={wallet.chainId} expected={needsChain ? expectedChainId : (wallet.chainId ?? expectedChainId)} />
       </div>
       {wrong ? (
         <Button size="sm" onClick={() => void controller.switchToPoolChain().catch(() => undefined)}>

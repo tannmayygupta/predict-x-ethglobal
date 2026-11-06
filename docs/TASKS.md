@@ -13,11 +13,11 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 | T-A01 | Extension scaffold and overlay mount | A | T-001 | doing |
 | T-A02 | MSW mock server from fixtures | A | T-001 | dropped |
 | T-A03 | Page bridge and wallet client | A | T-A01 | doing |
-| T-A04 | Cashtag detector and hover trigger | A | T-A01, T-A02 | todo |
-| T-A05 | Token card shell (A1) | A | T-A04 | todo |
-| T-A06 | Swap tab: market order (A2) | A | T-A05, T-A03 | todo |
-| T-A07 | Swap tab: limit order | A | T-A06 | todo |
-| T-A08 | Insight tab (A3) | A | T-A07 | todo |
+| T-A04 | Cashtag detector and hover trigger | A | T-A01, T-A02 | doing |
+| T-A05 | Token card shell (A1) | A | T-A04 | doing |
+| T-A06 | Swap tab: market order (A2) | A | T-A05, T-A03 | doing |
+| T-A07 | Swap tab: limit order | A | T-A06 | doing |
+| T-A08 | Insight tab (A3) | A | T-A07 | doing |
 | T-A09 | Create panel and launcher (A4) | A | T-A03, T-002 | todo |
 | T-A10 | Post step (A5) | A | T-A09 | todo |
 | T-A11 | Dashboard scaffold, routing, wallet | A | T-A02, T-A03 | todo |
@@ -78,28 +78,29 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 - done when: from the overlay you can connect, switch network and sign a test typed-data message.
 
 ### T-A04 Cashtag detector and hover trigger
-- owner: A | status: todo | deps: T-A01, T-A02 | reqs: FR-X-01, FR-X-02
+- owner: A | status: doing | deps: T-A01, T-A02 | reqs: FR-X-01, FR-X-02
 - do: fetch `/tokens`; `MutationObserver` on the timeline; wrap allowlisted `$SYMBOL` text in a span (amber underline) without breaking X's DOM; hover timings from `UI_REFERENCE` section 6. All X selectors in `xSelectors.ts`.
 - done when: only allowlisted tags highlight, scrolling loads are handled, hover opens a placeholder card.
 - note (2026-10-29 audit): legacy `src/content.tsx:22-43` has a mouseover regex for $BTC/$ETH/$SOL/$PEPE with a 240 ms hide delay; starting point only. No allowlist fetch, MutationObserver, highlight span or spec timings yet.
 
 ### T-A05 Token card shell (A1)
-- owner: A | status: todo | deps: T-A04 | reqs: FR-X-02, FR-X-03 | read: UI_REFERENCE A1
+- owner: A | status: doing | deps: T-A04 | reqs: FR-X-02, FR-X-03 | read: UI_REFERENCE A1
 - done when: header shows market data from `/market/:symbol`, address copy works, tabs switch, loading, error and stale states are reachable via the mock.
 - note (2026-10-29 audit): legacy card is a static stub with hardcoded prices; roughly 5% reusable. Rebuild against `/market/:symbol`.
 
 ### T-A06 Swap tab: market order (A2)
-- owner: A | status: todo | deps: T-A05, T-A03 | reqs: FR-S-01, FR-S-02, FR-S-04, FR-S-05, FR-S-06, FR-S-07 | read: API_CONTRACT quote and order shapes
+- testnet build (D-T1): quote-only; orders are never sent, so "reaches Filled" is replaced by "shows a real Flash quote and stops at Review only"
+- owner: A | status: doing | deps: T-A05, T-A03 | reqs: FR-S-01, FR-S-02, FR-S-04, FR-S-05, FR-S-06, FR-S-07 | read: API_CONTRACT quote and order shapes
 - do: form, quote summary, stepper, approve then sign then submit then poll, filled state, error states. Typed data passes through unchanged.
 - done when: against the mock the full flow reaches Filled; with the real backend (later) a $1-5 order fills.
 - note (2026-10-29 audit): legacy "Set Trade" UI is a static preview with a fake wallet picker; no viem, no quote call. Rebuild.
 
 ### T-A07 Swap tab: limit order
-- owner: A | status: todo | deps: T-A06 | reqs: FR-S-03
+- owner: A | status: doing | deps: T-A06 | reqs: FR-S-03
 - done when: Limit option sends `limitPriceUsd`; `open` status shows "Waiting for price".
 
 ### T-A08 Insight tab (A3)
-- owner: A | status: todo | deps: T-A07 | reqs: FR-I-01, FR-I-02, FR-I-03
+- owner: A | status: doing | deps: T-A07 | reqs: FR-I-01, FR-I-02, FR-I-03
 - done when: tip, badges, degraded notice, and "Use suggested limit" filling the Limit tab all work in the mock.
 
 ### T-A09 Create panel and launcher (A4)

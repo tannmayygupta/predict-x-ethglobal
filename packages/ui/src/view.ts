@@ -41,3 +41,33 @@ export function formatCountdown(resolveTime: number, now: number): string {
 export function poolSize(yesTotal: string, noTotal: string): string {
   return formatUsdc(BigInt(yesTotal) + BigInt(noTotal));
 }
+
+const PRICE_GROUP = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const TINY_PRICE_DIGITS = 8;
+
+/** "2451.12" -> "$2,451.12"; sub-dollar prices keep their small digits ("$0.000005062"). Display only. */
+export function formatUsdPrice(priceUsd: string): string {
+  const value = Number(priceUsd);
+  if (!Number.isFinite(value)) return `$${priceUsd}`;
+  if (value >= 1) return `$${PRICE_GROUP.format(value)}`;
+  const digits = Math.max(2, Math.min(TINY_PRICE_DIGITS + 4, -Math.floor(Math.log10(value)) + 3));
+  return `$${value.toFixed(digits).replace(/0+$/, "").replace(/\.$/, "")}`;
+}
+
+/** 24h change as shown on the card: "-1.8%" / "+0.4%". */
+export function formatChange(pct: number): string {
+  return `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
+}
+
+/** A fraction like "0.0004" as "0.04%". Display only. */
+export function formatImpact(fraction: string): string {
+  return `${(Number(fraction) * 100).toFixed(2)}%`;
+}
+
+/** The mock Flash client prefixes its ids; the UI must never present those as real (RULES 2.9). */
+export function isMockQuote(quoteId: string): boolean {
+  return quoteId.startsWith("q_mock_");
+}
+
+/** Price age after which the card says "Price delayed" even if the refresh did not fail outright. */
+export const STALE_PRICE_SECONDS = 120;

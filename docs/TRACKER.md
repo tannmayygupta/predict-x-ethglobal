@@ -45,11 +45,11 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked on a human input · ⬜ not 
 | T-A01 | Extension scaffold and overlay mount | 🟡 | 85 | | Built; load-unpacked check on x.com pending |
 | T-A02 | Mock API server from shared fixtures | dropped | - | | Decision D-T4: real backend, nothing mocked |
 | T-A03 | Wallet bridge (MetaMask on x.com) | 🟡 | 85 | | Bridge + controller built and tested; hand check pending |
-| T-A04 | Detect `$CASHTAG` and hover trigger | ⬜ | 15 | | T-A01, T-A02 |
-| T-A05 | Token card (price, address, tabs) | ⬜ | 5 | | T-A04 |
-| T-A06 | Swap tab: market order | ⬜ | 5 | | T-A05, T-A03 |
-| T-A07 | Swap tab: limit order | ⬜ | 0 | | T-A06 |
-| T-A08 | Insight tab | ⬜ | 0 | | T-A07 |
+| T-A04 | Detect `$CASHTAG` and hover trigger | 🟡 | 80 | | Detector + hover built and tested; X page check pending |
+| T-A05 | Token card (price, address, tabs) | 🟡 | 80 | | Card built against /market; browser check pending |
+| T-A06 | Swap tab: market order | 🟡 | 70 | | Quote-only by design (D-T1); needs a Flash key to see real quotes |
+| T-A07 | Swap tab: limit order | 🟡 | 70 | | Limit quote built; same key needed |
+| T-A08 | Insight tab | 🟡 | 80 | | Insight built; real tips need an OpenAI key |
 | T-A09 | Create pool panel and launcher | ⬜ | 5 | | T-A03, T-002 ✅ |
 | T-A10 | Post pool to X | ⬜ | 5 | | T-A09 |
 | T-A14 | Bet box under tweets | ⬜ | 0 | | T-A12, T-A04 |
