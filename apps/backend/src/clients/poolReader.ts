@@ -1,26 +1,7 @@
-/** Raw contract tuples. The pools service converts them with the shared helpers (T-B07). */
-export interface RawPool {
-  id: bigint;
-  question: string;
-  coingeckoId: string;
-  direction: number;
-  strikeE18: bigint;
-  resolveTime: bigint;
-  createdAt: bigint;
-  yesTotal: bigint;
-  noTotal: bigint;
-  resolved: boolean;
-  outcomeYes: boolean;
-  resolvedPriceE18: bigint;
-  feeBps: number;
-  creator: string;
-}
+import type { RawPool, RawPosition } from "@predictx/shared";
 
-export interface RawPosition {
-  yesStake: bigint;
-  noStake: bigint;
-  claimed: boolean;
-}
+// Raw tuples are defined in @predictx/shared next to the mapping that consumes them.
+export type { RawPool, RawPosition };
 
 export interface PoolReader {
   poolCount(): Promise<bigint>;
