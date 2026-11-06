@@ -66,6 +66,6 @@ ENV HOME=/home/node \
 
 WORKDIR /app/apps/backend
 
-# Secrets arrive as environment variables at run time: CRE_API_KEY (non-interactive CRE login), CRE_ETH_PRIVATE_KEY
+# Secrets arrive as environment variables at run time: CRE_LOGIN_YAML_B64 (your saved cre login, restored by settler-start.mjs; or CRE_API_KEY), CRE_ETH_PRIVATE_KEY
 # (a throwaway Base Sepolia wallet that pays gas), CRE_COINGECKO_API_KEY. POOL_RPC_URL is optional.
-CMD ["node_modules/.bin/tsx", "--tsconfig", "../../scripts/tsconfig.json", "../../scripts/resolver-loop.ts"]
+CMD ["node_modules/.bin/tsx", "--tsconfig", "../../scripts/tsconfig.json", "../../scripts/settler-start.mjs"]

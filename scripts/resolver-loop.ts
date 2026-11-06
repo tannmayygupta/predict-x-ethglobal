@@ -25,6 +25,13 @@ const CRE_ARGS = [
   "workflow", "simulate", "resolve-pools", "--target", "staging-settings",
   "--non-interactive", "--trigger-index", "0", "--broadcast",
 ];
+/** Output of a refused or expired login; the loop says so loudly because a silent auth failure means pools never settle. */
+const AUTH_FAILURE = /authentication required|not logged in|credential validation failed|authentication failed|invalid[_ ]grant|refresh token/i;
+const LOGIN_HELP =
+  "Chainlink refused the saved login. This can be a short Chainlink outage (the loop retries every minute); if it stays, run `cre login` on your computer, update CRE_LOGIN_YAML_B64 (or set CRE_API_KEY) and redeploy.";
+/** The login is checked at start and then hourly, so an expired one shows up long before a pool is due. */
+const LOGIN_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+const LOGIN_CHECK_ARGS = ["whoami"];
 const INSTALL_HINT = "cre CLI not found. Install it with: irm https://app.chain.link/cre/install.ps1 | iex   then run: cre login";
 
 interface CreResult {
@@ -53,14 +60,14 @@ function creEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-function runCre(): Promise<CreResult> {
+function runCre(args: readonly string[] = CRE_ARGS): Promise<CreResult> {
   return new Promise((resolve, reject) => {
     const env = creEnv();
     const secret = env.CRE_ETH_PRIVATE_KEY ?? "";
     // On Windows the child is looked up on the PATH we just built, so spawn the explicit file when it is there.
     const dir = windowsInstallDir();
     const exe = dir && existsSync(join(dir, "cre.exe")) ? join(dir, "cre.exe") : "cre";
-    const child = spawn(exe, CRE_ARGS, { cwd: CRE_DIR, env });
+    const child = spawn(exe, args, { cwd: CRE_DIR, env });
     const lines: string[] = [];
     const collect = (chunk: Buffer): void => {
       for (const line of chunk.toString().split(/\r?\n/)) {
@@ -81,6 +88,17 @@ function runCre(): Promise<CreResult> {
   });
 }
 
+/** `cre whoami` prints the account email, so its output is shown only when it fails. */
+async function checkLogin(): Promise<void> {
+  const result = await runCre(LOGIN_CHECK_ARGS);
+  if (result.code === 0) {
+    say("cre login ok");
+    return;
+  }
+  say(`LOGIN PROBLEM: ${LOGIN_HELP}`);
+  for (const line of result.tail) say(`cre: ${line}`);
+}
+
 async function cycle(ctx: PoolContext, dryRun: boolean, force: boolean): Promise<void> {
   const due = await dueIds(ctx, MAX_DUE);
   if (due.length === 0 && !force) {
@@ -94,6 +112,7 @@ async function cycle(ctx: PoolContext, dryRun: boolean, force: boolean): Promise
   }
   const result = await runCre();
   for (const line of result.tail) say(`cre: ${line}`);
+  if (result.code !== 0 && result.tail.some((line) => AUTH_FAILURE.test(line))) say(`LOGIN PROBLEM: ${LOGIN_HELP}`);
   const still = await dueIds(ctx, MAX_DUE);
   const resolved = due.filter((id) => !still.includes(id));
   say(`cre exited ${result.code}; resolved ${resolved.length} of ${due.length}${still.length ? `; still due: ${still.join(", ")}` : ""}`);
@@ -117,7 +136,12 @@ async function main(): Promise<void> {
     });
   }
   say(`resolver started for pool ${ctx.pool} every ${intervalMs / 1000}s${dryRun ? " (dry run)" : ""}`);
+  let lastLoginCheck = 0;
   while (!stopping) {
+    if (!once && !dryRun && Date.now() - lastLoginCheck >= LOGIN_CHECK_INTERVAL_MS) {
+      lastLoginCheck = Date.now();
+      await checkLogin().catch((err: unknown) => say(`login check failed: ${err instanceof Error ? err.message : String(err)}`));
+    }
     // A failed cycle (RPC blip, CoinGecko, cre error) is logged and retried next tick; it must not kill the loop.
     await cycle(ctx, dryRun, force).catch((err: unknown) => say(`cycle failed: ${err instanceof Error ? err.message : String(err)}`));
     if (once) return;
