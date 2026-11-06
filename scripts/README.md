@@ -73,3 +73,36 @@ The API key, the private key and every signature are redacted from the report an
 ```sh
 cd apps/backend && pnpm exec tsc -p ../../scripts/tsconfig.json
 ```
+
+## resolver-loop.ts (decision D-T2)
+
+Settles pools automatically. Every `RESOLVER_INTERVAL_SECONDS` (default 60) it reads `getDuePoolIds(10)` from the
+pool contract and, only when something is due, runs the real Chainlink CRE workflow with
+`cre workflow simulate resolve-pools --target staging-settings --non-interactive --trigger-index 0 --broadcast`.
+The workflow fetches the CoinGecko price and delivers the report through the CRE MockKeystoneForwarder, which is the
+forwarder the deployed pool trusts. It is a CRE **simulation** with real onchain delivery, so the UI says so.
+
+Needs the `cre` CLI (`irm https://app.chain.link/cre/install.ps1 | iex`, then `cre login`) and `CRE_ETH_PRIVATE_KEY`
+(a Base Sepolia wallet with test ETH) in `.env`.
+
+```sh
+cd apps/backend
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/resolver-loop.ts            # run forever
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/resolver-loop.ts --dry-run --once   # read-only check
+```
+
+A failed cycle is logged and retried on the next tick. Ctrl+C finishes the current cycle and exits.
+
+## e2e-lifecycle.ts
+
+Proves the whole money path without a UI: mint, create a 3-minute pool, exact approve, stake from two wallets, wait for
+the resolver, then claim or refund. Every number is checked three ways (contract, backend API, `computePayout`) and the
+reported price must be within 10% of the live API price. Needs the backend running, the resolver running, and
+`TEST_WALLET_A_PRIVATE_KEY` / `TEST_WALLET_B_PRIVATE_KEY` funded with Base Sepolia ETH.
+
+```sh
+cd apps/backend
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/e2e-lifecycle.ts --scenario yes    # YES wins
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/e2e-lifecycle.ts --scenario no     # NO wins
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/e2e-lifecycle.ts --scenario void   # refund
+```
