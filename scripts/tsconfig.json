@@ -10,6 +10,7 @@
       "viem/*": ["../apps/backend/node_modules/viem/*"],
       "zod": ["../apps/backend/node_modules/zod"],
       "@predictx/shared": ["../packages/shared/src/index.ts"],
+      "@predictx/ui": ["../packages/ui/src/index.ts"],
       "@predictx/shared/*": ["../packages/shared/*"]
     }
   },
