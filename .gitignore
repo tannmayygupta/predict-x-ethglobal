@@ -15,3 +15,4 @@ broadcast
 
 # local agent instructions, not committed
 CLAUDE.md
+.env.mi
