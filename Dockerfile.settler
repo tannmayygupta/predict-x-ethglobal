@@ -1,7 +1,7 @@
 # Settlement worker: polls Base Sepolia for pools past their close time and runs the Chainlink CRE workflow
 # (`cre workflow simulate --broadcast`) to deliver the result on-chain. No web server, no inbound traffic.
 # This is a CRE SIMULATION with real on-chain delivery; it is labelled that way everywhere it is shown.
-FROM oven/bun:1.3.5 AS bun
+FROM oven/bun:1.4.4 AS bun
 
 FROM node:22-bookworm-slim
 
@@ -16,14 +16,26 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg tar \
     && rm -rf /var/lib/apt/lists/*
 
-# Bun compiles the workflow; the version matches the one the workflow was developed with
+# Bun compiles the workflow. 1.4.4 is the version that wrote cre/resolve-pools/bun.lock (older Bun cannot parse it)
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 
-# The cre CLI, pinned to the version the workflow was simulated with (v1.39.0). The installer picks the glibc build
-# that matches this image and verifies the release signature. The binary lands in $CRE_INSTALL/bin/cre.
-RUN curl -fsSL https://app.chain.link/cre/install.sh | CRE_INSTALL=/opt/cre bash -s -- v1.39.0 \
-    && ln -s /opt/cre/bin/cre /usr/local/bin/cre \
-    && cre version
+# The cre CLI, pinned to v1.39.0 (the version the workflow was simulated with). Chainlink's install.sh is NOT used:
+# it always calls GitHub's API, which rate-limits shared build IPs (HTTP 403). Instead the release file is fetched
+# directly and its signature is verified with Chainlink's public key (taken from their installer) against a pinned
+# fingerprint. The "_ldd2-35" build is used on purpose: the default Linux build needs glibc 2.38, bookworm has 2.36.
+RUN set -eux; \
+    base=https://github.com/smartcontractkit/cre-cli/releases/download/v1.39.0; \
+    mkdir /tmp/cre; cd /tmp/cre; \
+    curl -fsSL -o cre.tar.gz "$base/cre_linux_amd64_ldd2-35.tar.gz"; \
+    curl -fsSL -o cre.sig "$base/cre_linux_amd64_ldd2-35.sig"; \
+    curl -fsSL -o install.sh https://app.chain.link/cre/install.sh; \
+    sed -n '/-----BEGIN PGP PUBLIC KEY BLOCK-----/,/-----END PGP PUBLIC KEY BLOCK-----/p' install.sh | sed 's/^[[:space:]]*//' > key.asc; \
+    gpg --batch --import key.asc; \
+    tar -xzf cre.tar.gz; \
+    gpg --batch --status-fd=1 --verify cre.sig cre_v1.39.0_linux_amd64 | grep -q "VALIDSIG 82449102CBB89ED9BEE11A484645BC1404C2F3DD"; \
+    install -m 0755 cre_v1.39.0_linux_amd64 /usr/local/bin/cre; \
+    cd /; rm -rf /tmp/cre /root/.gnupg; \
+    cre version
 
 RUN corepack enable
 
@@ -37,7 +49,7 @@ COPY packages/shared/package.json packages/shared/package.json
 COPY packages/ui/package.json packages/ui/package.json
 # The loop script resolves viem through apps/backend/node_modules (see scripts/tsconfig.json), so the backend's
 # dependencies are installed; nothing else from the workspace is needed.
-RUN pnpm install --frozen-lockfile --filter @predictx/backend...
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter @predictx/backend...
 
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared

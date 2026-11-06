@@ -16,13 +16,19 @@ COPY apps/dashboard/package.json apps/dashboard/package.json
 COPY apps/extension/package.json apps/extension/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/ui/package.json packages/ui/package.json
-RUN pnpm install --frozen-lockfile --filter @predictx/backend...
+# --ignore-scripts: pnpm would otherwise compile better-sqlite3 from source (needs Python and a C++ toolchain) even
+# though the package ships a ready-made prebuilds/linux-x64.node that it loads directly.
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter @predictx/backend...
 
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/backend apps/backend
 
 WORKDIR /app/apps/backend
+
+# Fail the build, not the deploy, if the native database module or the TypeScript runner cannot load.
+RUN node -e "const D=require('better-sqlite3'); const db=new D(':memory:'); db.prepare('select 1').get(); console.log('better-sqlite3 loads')" \
+    && node_modules/.bin/tsx -e "console.log('tsx runs')"
 
 # Vercel routes container functions to port 80 by default and expects the server on 0.0.0.0 (the backend already does).
 # An in-memory SQLite is enough while Flash orders are off: it only caches AI answers and unused quotes.

@@ -24,7 +24,7 @@
       "root": ".",
       "entrypoint": "Dockerfile.settler",
       "instances": { "iad1": 1 },
-      "resources": { "requests": { "memory": "2Gi" } }
+      "resources": { "requests": { "memory": "1Gi" } }
     }
   }
 }
