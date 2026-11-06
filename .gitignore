@@ -1,0 +1,17 @@
+node_modules
+dist
+.env
+.env.local
+*.sqlite
+*.sqlite-journal
+.DS_Store
+out
+cache
+broadcast
+
+# local-only reference material, not committed
+/sample images
+.DS_Store
+
+# local agent instructions, not committed
+CLAUDE.md
