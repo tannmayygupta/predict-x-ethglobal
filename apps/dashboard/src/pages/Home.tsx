@@ -32,7 +32,10 @@ export function Home() {
   const { pools, error, loading, reload } = usePools(api);
   return (
     <main className="mx-auto max-w-[960px] px-4 py-8">
-      <h1 className="mb-6 font-display text-28 font-bold">Latest predictions</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-28 font-bold">Latest predictions</h1>
+        <Link to="/predict" className="inline-flex h-10 items-center rounded-button border border-amber bg-amber px-4 text-14 font-semibold text-amber-ink no-underline">New prediction</Link>
+      </div>
       {loading ? (
         <div className="grid grid-cols-1 gap-4 min-[800px]:grid-cols-2" aria-busy="true">
           {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[150px]" />)}

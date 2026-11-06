@@ -88,7 +88,7 @@ export function Segmented<T extends string>({ label, options, value, onChange, d
             className={cx(
               "h-8 flex-1 cursor-pointer rounded-input px-2 text-13 font-semibold transition-colors duration-fast",
               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber disabled:opacity-50",
-              selected ? "bg-ink3 text-amber" : "bg-transparent text-mute",
+              selected ? "bg-ink text-amber shadow-card" : "bg-transparent text-mute hover:text-text",
             )}
           >
             {o.label}

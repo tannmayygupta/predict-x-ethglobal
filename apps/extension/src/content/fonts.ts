@@ -1,4 +1,4 @@
-import displayUrl from "@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2?url";
+import displayUrl from "@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2?url";
 import bodyUrl from "@fontsource-variable/instrument-sans/files/instrument-sans-latin-wght-normal.woff2?url";
 
 /**
@@ -7,7 +7,7 @@ import bodyUrl from "@fontsource-variable/instrument-sans/files/instrument-sans-
  * names match design-tokens.css. If a font cannot load, the token stack falls back to system-ui.
  */
 const FACES: Array<{ family: string; url: string }> = [
-  { family: "Bricolage Grotesque Variable", url: displayUrl },
+  { family: "Fraunces Variable", url: displayUrl },
   { family: "Instrument Sans Variable", url: bodyUrl },
 ];
 

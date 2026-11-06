@@ -1,12 +1,18 @@
 import { DURATION_PRESETS_SECONDS, type Token } from "@predictx/shared";
-import {
-  Button, COPY, Notice, Segmented, TextField, UiError, WalletBar, chainNow, createPool, formatUsdPrice, postablePool, prepareCreate,
-  toUiError, useNow, useWallet, type PostablePool, type PreparedPool,
-} from "@predictx/ui";
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../api";
-import { chain, wallet } from "../wallet";
+import { createPool } from "../actions";
+import { chainNow } from "../chain";
+import { useApp } from "../context";
+import { COPY } from "../copy";
+import { prepareCreate, type PreparedPool } from "../create";
+import { postablePool, type PostablePool } from "../created";
+import { toUiError, type UiError } from "../errors";
+import { useNow, useWallet } from "../react/useExternal";
+import { formatUsdPrice } from "../view";
+import { Segmented, TextField } from "./forms";
 import { PostStep } from "./PostStep";
+import { Button, Notice } from "./primitives";
+import { WalletBar } from "./wallet";
 
 type Direction = "above" | "below";
 type Phase = { kind: "form" } | { kind: "sending" } | { kind: "error"; error: UiError } | { kind: "done"; pool: PostablePool };
@@ -15,7 +21,8 @@ const DURATION_LABELS: Record<number, string> = { 180: "3 min", 3600: "1 hour", 
 const DURATION_OPTIONS = DURATION_PRESETS_SECONDS.map((s) => ({ value: String(s), label: DURATION_LABELS[s] ?? `${s}s` }));
 
 /** A4: the form builds the exact question that will be stored onchain and shows it before anything is signed. */
-export function CreatePanel({ tokens, initialSymbol, onClose }: { tokens: Token[]; initialSymbol: string | null; onClose(): void }) {
+export function CreatePrediction({ tokens, initialSymbol, onDone }: { tokens: Token[]; initialSymbol: string | null; onDone(): void }) {
+  const { api, wallet, chain } = useApp();
   const account = useWallet(wallet);
   const local = useNow();
   const [skew, setSkew] = useState(0);
@@ -31,7 +38,7 @@ export function CreatePanel({ tokens, initialSymbol, onClose }: { tokens: Token[
   // The contract judges lead time by block time, so the preview must too: measure how far the local clock is off.
   useEffect(() => {
     chainNow(chain).then((t) => setSkew(t - Math.floor(Date.now() / 1000)), () => undefined);
-  }, []);
+  }, [chain]);
 
   useEffect(() => {
     setSpot(null);
@@ -39,7 +46,7 @@ export function CreatePanel({ tokens, initialSymbol, onClose }: { tokens: Token[
     let live = true;
     api.market(symbol).then((m) => live && setSpot(m.priceUsd), () => undefined);
     return () => { live = false; };
-  }, [symbol]);
+  }, [api, symbol]);
 
   const prepared = useMemo<{ value: PreparedPool | null; error: string | null }>(() => {
     if (!token || strike.trim() === "") return { value: null, error: null };
@@ -66,7 +73,7 @@ export function CreatePanel({ tokens, initialSymbol, onClose }: { tokens: Token[
       .catch((err: unknown) => setPhase({ kind: "error", error: toUiError(err) }));
   };
 
-  if (phase.kind === "done") return <PostStep pool={phase.pool} onDone={onClose} />;
+  if (phase.kind === "done") return <PostStep pool={phase.pool} onDone={onDone} />;
 
   const connected = account.status === "connected";
   const wrongNetwork = connected && account.chainId !== chain.chainId;
@@ -74,10 +81,7 @@ export function CreatePanel({ tokens, initialSymbol, onClose }: { tokens: Token[
 
   return (
     <div className="flex flex-col gap-3">
-      <header className="flex items-center justify-between">
-        <h2 className="m-0 font-display text-20 font-bold">New prediction</h2>
-        <Button variant="ghost" size="sm" aria-label="Close" onClick={onClose}>x</Button>
-      </header>
+      <h2 className="m-0 font-display text-20 font-bold">New prediction</h2>
 
       <label className="flex flex-col gap-1 text-13 text-mute">
         Token

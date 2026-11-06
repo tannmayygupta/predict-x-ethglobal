@@ -15,7 +15,7 @@
 | Contracts | Solidity 0.8.24, Foundry, OpenZeppelin (`SafeERC20`, `ReentrancyGuard`) |
 | Pool chain | Base Sepolia (84532), `MockUSDC` (6 decimals, public mint) |
 | Oracle | Chainlink CRE, TypeScript SDK, `cre` CLI simulation |
-| Fonts | `@fontsource-variable/bricolage-grotesque`, `@fontsource-variable/instrument-sans` (bundled, never remote) |
+| Fonts | `@fontsource-variable/fraunces` (display), `@fontsource-variable/instrument-sans` (body), bundled, never remote |
 | Tests | Vitest (shared, backend), Foundry (contracts) |
 
 ## Decision log
@@ -62,6 +62,9 @@
 | D-T5 | The extension calls the backend through its service worker, which coalesces identical GETs | Avoids x.com CORS/CSP/Private Network Access limits and the 60 req/min rate limit |
 | D-T6 | After a transaction the UI re-reads the affected pool and position from the chain with viem | The backend caches pool reads for 10 s |
 | D-T7 | Composer link is `x.com/intent/post` | Resolves the open item below |
+| D-T8 | Paper theme (cream surfaces, ink text, cobalt accent, Fraunces display). Token names are unchanged (`--px-amber` now holds the cobalt accent) | The navy and amber look read as generated; renaming tokens would touch every component for no visible gain |
+| D-T9 | `@predictx/ui` exposes `AppProvider` and the create, swap, AI and token-picker screens; the extension and the dashboard each supply their own api, wallet and chain | The same screens now run on X and on the website without a copy |
+| D-T10 | The extension has one panel with AI, Swap and Predict, shown as a popup, a slide-up sheet or a side panel (choice kept in localStorage, guarded) | One place for everything, and a view the user can pick |
 
 ## Open items (a human must confirm; an agent never decides these)
 

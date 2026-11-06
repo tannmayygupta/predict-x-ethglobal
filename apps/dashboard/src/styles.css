@@ -1,4 +1,4 @@
-@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource-variable/fraunces";
 @import "@fontsource-variable/instrument-sans";
 @import "@predictx/shared/src/design-tokens.css";
 
@@ -10,6 +10,9 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: var(--px-rule);
 }
 
 html,
@@ -26,6 +29,11 @@ body {
   font-size: 14px;
   line-height: 20px;
   -webkit-font-smoothing: antialiased;
+}
+
+button {
+  background: transparent;
+  cursor: pointer;
 }
 
 button,

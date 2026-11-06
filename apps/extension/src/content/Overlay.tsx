@@ -2,18 +2,28 @@ import { Button, Notice } from "@predictx/ui";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { HoverStore } from "../x/hoverStore";
 import { TokenCard } from "./cards/TokenCard";
-import { CreatePanel } from "./create/CreatePanel";
 import { ESCAPE_EVENT } from "./events";
+import { loadMode, type PanelMode } from "./mode";
+import { Panel, type PanelTab } from "./Panel";
 import { tokenStore } from "./tokens";
 
-/** Launcher pill (bottom right) that opens the Create panel, plus the hover card. */
+interface PanelState {
+  open: boolean;
+  tab: PanelTab;
+  symbol: string;
+}
+
+/** Launcher pill (bottom right) that opens the PredictX panel, plus the hover card on cashtags. */
 export function Overlay({ hover }: { hover: HoverStore }) {
-  const [panel, setPanel] = useState<{ open: boolean; symbol: string | null; run: number }>({ open: false, symbol: null, run: 0 });
-  const closePanel = (): void => setPanel((p) => ({ ...p, open: false }));
-  const openPanel = (symbol: string | null): void => setPanel((p) => ({ open: true, symbol, run: p.run + 1 }));
+  const [panel, setPanel] = useState<PanelState>({ open: false, tab: "predict", symbol: "" });
+  const [mode, setMode] = useState<PanelMode>(loadMode);
   const hovered = useSyncExternalStore(hover.subscribe, hover.getState, hover.getState);
   const tokens = useSyncExternalStore(tokenStore.subscribe, tokenStore.get, tokenStore.get);
   const token = hovered.symbol ? tokens.find((t) => t.symbol === hovered.symbol) : undefined;
+
+  const closePanel = (): void => setPanel((p) => ({ ...p, open: false }));
+  const openPanel = (tab: PanelTab, symbol?: string): void =>
+    setPanel((p) => ({ open: true, tab, symbol: symbol ?? (p.symbol || tokens[0]?.symbol || "") }));
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -34,26 +44,49 @@ export function Overlay({ hover }: { hover: HoverStore }) {
     };
   }, [hover]);
 
+  // The launcher stays visible in popup mode (it toggles the panel); the sheet and side panel cover its corner.
+  const showLauncher = !panel.open || mode === "popup";
+
   return (
     <>
-      {token && hovered.anchor ? <TokenCard key={token.symbol} token={token} anchor={hovered.anchor} store={hover} onPredict={(symbol) => { hover.close(); openPanel(symbol); }} /> : null}
-      {panel.open ? (
-        <section
-          aria-label="PredictX"
-          className="px-card-in pointer-events-auto fixed bottom-[72px] right-5 max-h-[calc(100vh-96px)] w-[360px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-card border border-rule bg-ink p-4 text-text shadow-card"
-        >
-          {tokens.length > 0 ? (
-            <CreatePanel key={panel.run} tokens={tokens} initialSymbol={panel.symbol} onClose={closePanel} />
-          ) : (
-            <Notice kind="info">Connecting to the PredictX server...</Notice>
-          )}
-        </section>
+      {token && hovered.anchor ? (
+        <TokenCard
+          key={token.symbol}
+          token={token}
+          anchor={hovered.anchor}
+          store={hover}
+          onPredict={(symbol) => {
+            hover.close();
+            openPanel("predict", symbol);
+          }}
+        />
       ) : null}
-      <div className="pointer-events-auto fixed bottom-5 right-5">
-        <Button onClick={() => (panel.open ? closePanel() : openPanel(null))} aria-expanded={panel.open}>
-          PredictX
-        </Button>
-      </div>
+      {panel.open ? (
+        tokens.length > 0 ? (
+          <Panel
+            tokens={tokens}
+            tab={panel.tab}
+            symbol={panel.symbol || tokens[0]?.symbol || ""}
+            mode={mode}
+            onTab={(tab) => setPanel((p) => ({ ...p, tab }))}
+            onSymbol={(symbol) => setPanel((p) => ({ ...p, symbol }))}
+            onMode={setMode}
+            onMinimise={closePanel}
+            onClose={closePanel}
+          />
+        ) : (
+          <section aria-label="PredictX" className="px-card-in pointer-events-auto fixed bottom-[76px] right-5 w-[320px] rounded-card border border-rule bg-ink p-4 shadow-card">
+            <Notice kind="info">Connecting to the PredictX server...</Notice>
+          </section>
+        )
+      ) : null}
+      {showLauncher ? (
+        <div className="pointer-events-auto fixed bottom-5 right-5">
+          <Button onClick={() => (panel.open ? closePanel() : openPanel(panel.tab))} aria-expanded={panel.open}>
+            PredictX
+          </Button>
+        </div>
+      ) : null}
     </>
   );
 }

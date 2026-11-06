@@ -33,6 +33,20 @@
   color: inherit;
 }
 
+/* Tailwind preflight is off, so borders need a style or the browser draws its grey default on every button. */
+.px-root *,
+.px-root *::before,
+.px-root *::after {
+  border-width: 0;
+  border-style: solid;
+  border-color: var(--px-rule);
+}
+
+.px-root button {
+  background: transparent;
+  cursor: pointer;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .px-root * {
     animation-duration: 0ms !important;

@@ -1,7 +1,11 @@
 import { MAX_INTENT_LENGTH, type InsightResponse } from "@predictx/shared";
-import { Badge, Button, COPY, Notice, Skeleton, TextField, formatUsdPrice, loadError, type ApiClientError } from "@predictx/ui";
 import { useState } from "react";
-import { api } from "../api";
+import type { ApiClientError } from "../api";
+import { useApp } from "../context";
+import { COPY, loadError } from "../copy";
+import { formatUsdPrice } from "../view";
+import { TextField } from "./forms";
+import { Badge, Button, Notice, Skeleton } from "./primitives";
 
 type State =
   | { kind: "idle" }
@@ -14,7 +18,8 @@ const BIAS_LABEL = { bullish: "Bullish", bearish: "Bearish", neutral: "Neutral" 
 const CONFIDENCE_LABEL = { low: "Low confidence", medium: "Medium confidence", high: "High confidence" } as const;
 
 /** The AI tip. It only reads: nothing here can sign, send or place an order (FR-I-04). */
-export function InsightTab({ symbol, canTrade, onUseLimit }: { symbol: string; canTrade: boolean; onUseLimit(priceUsd: string): void }) {
+export function InsightPanel({ symbol, canTrade, onUseLimit }: { symbol: string; canTrade: boolean; onUseLimit(priceUsd: string): void }) {
+  const { api } = useApp();
   const [intent, setIntent] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
 
@@ -28,7 +33,7 @@ export function InsightTab({ symbol, canTrade, onUseLimit }: { symbol: string; c
   };
 
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-3">
       <TextField
         label="What are you planning? (optional)"
         value={intent}

@@ -31,3 +31,6 @@ export const api = createApiClient(apiBaseUrl);
 
 /** The dashboard talks to MetaMask directly; the extension reaches the same provider through its bridge. */
 export const wallet = createWalletController({ chain, getProvider: () => discoverMetaMask() });
+
+/** What the shared @predictx/ui screens (create, swap, AI) read through <AppProvider>. */
+export const services = { api, wallet, chain, dashboardUrl };

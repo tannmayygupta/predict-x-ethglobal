@@ -1,15 +1,18 @@
+import { AppProvider } from "@predictx/ui";
 import { createRoot } from "react-dom/client";
 import { buildTagPattern, observeCashtags } from "../x/cashtags";
 import { attachHoverEvents } from "../x/hoverEvents";
 import { createHoverStore } from "../x/hoverStore";
 import { backgroundBehind, observePostBoxes } from "../x/postBoxes";
+import { dashboardUrl } from "../config";
+import { api } from "./api";
 import { BetBox } from "./BetBox";
 import { ESCAPE_EVENT } from "./events";
 import { loadFonts } from "./fonts";
 import { mountShadow } from "./mount";
 import { Overlay } from "./Overlay";
 import { loadTokens } from "./tokens";
-import { wallet } from "./wallet";
+import { chain, wallet } from "./wallet";
 
 const { host, root } = mountShadow("predictx-overlay", { onEscape: () => window.dispatchEvent(new Event(ESCAPE_EVENT)) });
 const hover = createHoverStore();
@@ -17,7 +20,11 @@ const hover = createHoverStore();
 void loadFonts();
 void wallet.restore(); // picks up an already-approved account without prompting
 attachHoverEvents(hover);
-createRoot(root).render(<Overlay hover={hover} />);
+createRoot(root).render(
+  <AppProvider services={{ api, wallet, chain, dashboardUrl }}>
+    <Overlay hover={hover} />
+  </AppProvider>,
+);
 
 // Bet boxes under posts that carry PX#<id> or a /pool/<id> link. Each box gets its own shadow root.
 let boxCount = 0;

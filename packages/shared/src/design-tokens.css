@@ -2,20 +2,20 @@
 :root,
 :host {
   /* color */
-  --px-ink: #14182b;        /* card surface */
-  --px-ink-2: #1d2340;      /* inputs, raised areas */
-  --px-ink-3: #262d52;      /* hover on raised areas */
-  --px-rule: #2c3358;       /* borders, dividers */
-  --px-text: #edebfa;       /* primary text */
-  --px-mute: #9aa1c7;       /* secondary text */
-  --px-amber: #ffb020;      /* primary action, brand */
-  --px-amber-ink: #14182b;  /* text on amber */
-  --px-yes: #34d399;
-  --px-no: #ff6b7a;
-  --px-page: #0d1020;       /* dashboard page background */
+  --px-ink: #FBF8F1;        /* card surface (paper) */
+  --px-ink-2: #EAE3D4;      /* inputs, sunken areas */
+  --px-ink-3: #E0D8C5;      /* hover on sunken areas */
+  --px-rule: #D8CFBC;       /* borders, dividers */
+  --px-text: #1E1B16;       /* primary text (ink) */
+  --px-mute: #645D50;       /* secondary text */
+  --px-amber: #2B45E0;      /* accent: primary action, brand (cobalt; the token keeps its first name) */
+  --px-amber-ink: #FFFFFF;  /* text on the accent */
+  --px-yes: #1C7C54;
+  --px-no: #C2362B;
+  --px-page: #F3EEE3;       /* page background (warm cream) */
 
   /* type */
-  --px-font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
+  --px-font-display: "Fraunces Variable", "Fraunces", Georgia, serif;
   --px-font-body: "Instrument Sans Variable", "Instrument Sans", system-ui, sans-serif;
   --px-fs-12: 12px; --px-fs-13: 13px; --px-fs-14: 14px; --px-fs-16: 16px;
   --px-fs-20: 20px; --px-fs-28: 28px; --px-fs-40: 40px;
@@ -27,7 +27,7 @@
   --px-r-input: 6px; --px-r-button: 10px; --px-r-card: 14px; --px-notch: 8px;
 
   /* elevation and motion */
-  --px-shadow: 0 8px 30px rgba(10, 12, 30, 0.45);
+  --px-shadow: 0 8px 30px rgba(60, 48, 20, 0.16);
   --px-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --px-t-fast: 120ms;
   --px-t-card: 140ms;

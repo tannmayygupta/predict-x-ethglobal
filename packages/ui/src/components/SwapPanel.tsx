@@ -1,11 +1,13 @@
 import { CHAINS, MAX_FLASH_TRADE_USD, toUsdcUnits, type FlashQuoteResponse, type Token } from "@predictx/shared";
-import {
-  AddressChip, Badge, Button, COPY, Notice, Segmented, TextField, WalletBar, formatImpact, isMockQuote, useNow, useWallet,
-  type ApiClientError,
-} from "@predictx/ui";
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api";
-import { chain, wallet } from "../wallet";
+import type { ApiClientError } from "../api";
+import { useApp } from "../context";
+import { COPY } from "../copy";
+import { useNow, useWallet } from "../react/useExternal";
+import { formatImpact, isMockQuote } from "../view";
+import { Segmented, TextField } from "./forms";
+import { Badge, Button, Notice } from "./primitives";
+import { AddressChip, WalletBar } from "./wallet";
 
 type OrderType = "market" | "limit";
 type QuoteState =
@@ -38,7 +40,8 @@ function priceError(price: string): string | null {
  * mainnet funds: the tab shows exactly what an order would be, then stops at a disabled button. The wallet is
  * used only for its address; it is never asked to switch to mainnet, approve, or sign here.
  */
-export function SwapTab({ token, initialLimit }: { token: Token; initialLimit: string | null }) {
+export function SwapPanel({ token, initialLimit }: { token: Token; initialLimit: string | null }) {
+  const { api, wallet, chain } = useApp();
   const account = useWallet(wallet);
   const now = useNow();
   const [amount, setAmount] = useState("");
@@ -83,7 +86,7 @@ export function SwapTab({ token, initialLimit }: { token: Token; initialLimit: s
   };
 
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-3">
       {account.status !== "connected" ? <WalletBar controller={wallet} expectedChainId={chain.chainId} needsChain={false} /> : null}
       <TextField
         label="Spend (USDC)"

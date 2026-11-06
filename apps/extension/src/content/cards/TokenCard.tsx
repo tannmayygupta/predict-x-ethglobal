@@ -1,13 +1,11 @@
 import { CHAINS, type Token } from "@predictx/shared";
 import {
-  AddressChip, Badge, Button, COPY, Notice, Skeleton, Tabs, formatChange, formatUsdPrice, loadError, useNow, cx,
+  AddressChip, Badge, Button, COPY, InsightPanel, Notice, Skeleton, SwapPanel, Tabs, cx, formatChange, formatUsdPrice, loadError, useApp,
+  useMarket, useNow,
 } from "@predictx/ui";
 import { useState } from "react";
 import type { AnchorRect, HoverStore } from "../../x/hoverStore";
 import { placeCard } from "../../x/hoverStore";
-import { InsightTab } from "./InsightTab";
-import { SwapTab } from "./SwapTab";
-import { useMarket } from "./useMarket";
 
 const CARD_WIDTH = 340;
 const CARD_HEIGHT = 360;
@@ -15,14 +13,15 @@ type Tab = "swap" | "insight";
 
 /** A1: the hover card. Header is live market data; Swap exists only for tokens Flash can trade. */
 export function TokenCard({ token, anchor, store, onPredict }: { token: Token; anchor: AnchorRect; store: HoverStore; onPredict(symbol: string): void }) {
+  const { api } = useApp();
   const now = useNow();
-  const { market, error, delayed, retry } = useMarket(token.symbol, now);
+  const { market, error, delayed, retry } = useMarket(api, token.symbol, now);
   const [tab, setTab] = useState<Tab>(token.flashSupported ? "swap" : "insight");
   const [suggestedLimit, setSuggestedLimit] = useState<string | null>(null);
   const place = placeCard(anchor, { width: window.innerWidth, height: window.innerHeight }, { width: CARD_WIDTH, height: CARD_HEIGHT });
   const tabs: ReadonlyArray<{ value: Tab; label: string }> = token.flashSupported
-    ? [{ value: "swap", label: "Swap" }, { value: "insight", label: "Insight" }]
-    : [{ value: "insight", label: "Insight" }];
+    ? [{ value: "swap", label: "Swap" }, { value: "insight", label: "AI" }]
+    : [{ value: "insight", label: "AI" }];
 
   return (
     <section
@@ -66,13 +65,15 @@ export function TokenCard({ token, anchor, store, onPredict }: { token: Token; a
 
       <Tabs<Tab> tabs={tabs} value={tab} onChange={(next) => setTab(next)} />
       {tab === "swap" && token.flashSupported ? (
-        <SwapTab token={token} initialLimit={suggestedLimit} />
+        <div className="p-4"><SwapPanel token={token} initialLimit={suggestedLimit} /></div>
       ) : (
-        <InsightTab
-          symbol={token.symbol}
-          canTrade={token.flashSupported}
-          onUseLimit={(price) => { setSuggestedLimit(price); setTab("swap"); }}
-        />
+        <div className="p-4">
+          <InsightPanel
+            symbol={token.symbol}
+            canTrade={token.flashSupported}
+            onUseLimit={(price) => { setSuggestedLimit(price); setTab("swap"); }}
+          />
+        </div>
       )}
       <footer className="flex items-center justify-between border-t border-rule px-4 py-2 text-12 text-mute">
         <Button variant="secondary" size="sm" onClick={() => onPredict(token.symbol)}>{COPY.create_cta}</Button>

@@ -1,6 +1,8 @@
 import { buildTweetText } from "@predictx/shared";
-import { Button, COPY, Notice, type PostablePool } from "@predictx/ui";
 import { useMemo, useState } from "react";
+import { COPY } from "../copy";
+import type { PostablePool } from "../created";
+import { Button, Notice } from "./primitives";
 
 const COMPOSER_URL = "https://x.com/intent/post";
 const COPIED_MS = 1500;
@@ -33,6 +35,7 @@ export function PostStep({ pool, onDone }: { pool: PostablePool; onDone(): void 
     <div className="flex flex-col gap-3">
       <h3 className="m-0 font-display text-20 font-bold text-yes">{COPY.created}</h3>
       <p className="m-0 text-14 text-mute">Pool #{pool.id} is live on Base Sepolia.</p>
+      {text ? <p className="m-0 text-12 text-mute">Opens a draft on X. You can edit it there before you press Post.</p> : null}
       {text ? (
         <pre className="m-0 select-text whitespace-pre-wrap rounded-input border border-rule bg-ink2 p-3 font-body text-13 text-text">{text}</pre>
       ) : (
