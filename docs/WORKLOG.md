@@ -99,3 +99,12 @@ Pool 3 "Will $ETH be below $2500 at 04:39 UTC on 31 Oct?" created (tx 0xb9b77db3
 
 ## T-B07 / T-B09 live verification  (B, 2026-10-31 10:13 IST)
 `pnpm vitest run --config vitest.live.config.ts test/live/pools.live.test.ts` against Base Sepolia -> 1 passed. Backend /pools: 3 awaiting, 2 open, 1 resolved yes (77188.56), 0 resolved no (2238.21); every field equals getPool. Position for Account 2 on pool 0 shows claimed true. Demo will run on localhost; T-B10 hosting deferred.
+
+## Testnet-only end-to-end build, M0 to M3  (A+B, 2026-11-06)
+Plan approved by the human (decisions D-T1 to D-T7 in DECISIONS.md): testnet only, Swap tab shows real Flash quotes and never submits, pools settled by a local CRE-simulation loop, no mock mode in the product.
+M0: B-005 resolved (shared fixtures now equal buildQuestion output, with a test). FLASH_ORDERS_ENABLED (default false) makes POST /flash/order answer FLASH_ERROR in real mode before any quote is read; 5 new tests. SIGTERM shutdown test skipped on Windows. Pool row mapping (toPool, toPosition, RawPool) moved to @predictx/shared so the UI refreshes from the chain with the same code; backend tests unchanged and green (477 pass, 1 skipped on Windows).
+M1 (code done, run pending): scripts/resolver-loop.ts and scripts/e2e-lifecycle.ts typecheck and fail fast with clear messages. Not run end to end: needs the cre CLI and funded TEST_WALLET_A/B and CRE_ETH_PRIVATE_KEY keys.
+M2: packages/ui (API client, wallet actions, controllers, helpers): 57 unit tests; live parity test passes against Base Sepolia (backend pools and positions equal direct chain reads, field for field).
+M3: apps/extension rebuilt on @crxjs/vite-plugin 3 (legacy prototype removed): MV3 manifest, service-worker API gateway (not an open proxy, coalesces GETs), MAIN-world wallet bridge built as a 1.7 kB IIFE, Shadow DOM overlay with tokens and Tailwind inside the root, fonts via the FontFace API. 32 extension tests. `vite build` is clean; the build output contains no key names. Browser load check on x.com is still to do.
+New copy strings (not in the written deck): "Connect wallet", "Testnet-only build: orders are not sent.", "Review only", "Settled by Chainlink CRE (simulation)", plus the plain error sentences in packages/ui/src/errors.ts.
+

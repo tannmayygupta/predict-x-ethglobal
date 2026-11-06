@@ -6,7 +6,7 @@
 import { mockUsdcAbi, predictionPoolAbi, toUsdcUnits } from "@predictx/shared";
 import { parseEventLogs, type Account, type Address, type Hex } from "viem";
 import {
-  POOL_CHAIN, chainNow, readRawPool, readUsdcAllowance, readUsdcBalance, type ChainClients, type PoolWalletClient,
+  chainNow, readRawPool, readUsdcAllowance, readUsdcBalance, type ChainClients, type PoolWalletClient,
 } from "./chain";
 import type { PreparedPool } from "./create";
 import { UiError, toUiError } from "./errors";
@@ -21,7 +21,6 @@ export interface Session {
 /** The faucet contract caps one mint at 1,000 USDC (API_CONTRACT section 4). */
 export const MAX_MINT_USDC = "1000";
 const WRONG_NETWORK_MESSAGE = "Switch your wallet to Base Sepolia.";
-const UNRECOGNISED_CHAIN = 4902; // wallet does not know the chain yet
 
 export function accountAddress(session: Session): Address {
   return typeof session.account === "string" ? session.account : session.account.address;
@@ -37,20 +36,6 @@ async function guarded<T>(run: () => Promise<T>): Promise<T> {
 
 async function assertNetwork(session: Session): Promise<void> {
   if ((await session.wallet.getChainId()) !== session.chain.chainId) throw new UiError("WRONG_NETWORK", WRONG_NETWORK_MESSAGE);
-}
-
-/** Asks the wallet to move to Base Sepolia, adding the network first if the wallet has never seen it. */
-export function switchToPoolChain(session: Session): Promise<void> {
-  return guarded(async () => {
-    try {
-      await session.wallet.switchChain({ id: session.chain.chainId });
-    } catch (err) {
-      const code = typeof err === "object" && err !== null && "code" in err ? (err as { code: unknown }).code : undefined;
-      if (code !== UNRECOGNISED_CHAIN) throw err;
-      await session.wallet.addChain({ chain: POOL_CHAIN });
-      await session.wallet.switchChain({ id: session.chain.chainId });
-    }
-  });
 }
 
 async function confirmed(session: Session, hash: Hex): Promise<Hex> {

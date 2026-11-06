@@ -13,11 +13,22 @@
   "dependencies": {
     "@predictx/shared": "workspace:*",
     "viem": "^2.57.13",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "react": "18.3.1"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
     "typescript": "^5.9.3",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "jsdom": "^31.0.0",
+    "@testing-library/react": "^16.3.0",
+    "react-dom": "18.3.1"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./provider": "./src/provider.ts",
+    "./tailwind-preset": "./tailwind.preset.cjs"
   }
 }

@@ -1,0 +1,41 @@
+@tailwind components;
+@tailwind utilities;
+
+/* Everything below lives inside the shadow root: nothing here can reach x.com, and x.com's CSS cannot reach us. */
+:host {
+  all: initial;
+}
+
+.px-root {
+  font-family: var(--px-font-body);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--px-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.px-root *,
+.px-root *::before,
+.px-root *::after {
+  box-sizing: border-box;
+}
+
+.px-root button,
+.px-root input,
+.px-root select,
+.px-root textarea {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+}
+
+.px-root a {
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .px-root * {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+}

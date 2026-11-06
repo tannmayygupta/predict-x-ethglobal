@@ -42,9 +42,9 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked on a human input · ⬜ not 
 
 | ID | Task | Status | % | Assignee | Depends on |
 | --- | --- | --- | --- | --- | --- |
-| T-A01 | Extension scaffold and overlay mount | ⬜ | 10 | | T-001 ✅ (ready to start) |
-| T-A02 | Mock API server from shared fixtures | ⬜ | 0 | | T-001 ✅ (ready to start) |
-| T-A03 | Wallet bridge (MetaMask on x.com) | ⬜ | 0 | | T-A01 |
+| T-A01 | Extension scaffold and overlay mount | 🟡 | 85 | | Built; load-unpacked check on x.com pending |
+| T-A02 | Mock API server from shared fixtures | dropped | - | | Decision D-T4: real backend, nothing mocked |
+| T-A03 | Wallet bridge (MetaMask on x.com) | 🟡 | 85 | | Bridge + controller built and tested; hand check pending |
 | T-A04 | Detect `$CASHTAG` and hover trigger | ⬜ | 15 | | T-A01, T-A02 |
 | T-A05 | Token card (price, address, tabs) | ⬜ | 5 | | T-A04 |
 | T-A06 | Swap tab: market order | ⬜ | 5 | | T-A05, T-A03 |

@@ -10,9 +10,9 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 | T-001 | Verify scaffold | B | none | done |
 | T-002 | Deploy stub contracts and publish ABI | B | T-001 | done |
 | T-003 | Gate 0: one real Flash limit order | B | T-001 | blocked |
-| T-A01 | Extension scaffold and overlay mount | A | T-001 | todo |
-| T-A02 | MSW mock server from fixtures | A | T-001 | todo |
-| T-A03 | Page bridge and wallet client | A | T-A01 | todo |
+| T-A01 | Extension scaffold and overlay mount | A | T-001 | doing |
+| T-A02 | MSW mock server from fixtures | A | T-001 | dropped |
+| T-A03 | Page bridge and wallet client | A | T-A01 | doing |
 | T-A04 | Cashtag detector and hover trigger | A | T-A01, T-A02 | todo |
 | T-A05 | Token card shell (A1) | A | T-A04 | todo |
 | T-A06 | Swap tab: market order (A2) | A | T-A05, T-A03 | todo |
@@ -62,18 +62,18 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 ## Part A: extension and dashboard (Agent A)
 
 ### T-A01 Extension scaffold and overlay mount
-- owner: A | status: todo | deps: T-001 | reqs: FR-X-04 | read: UI_REFERENCE sections 1, 2
+- owner: A | status: doing | deps: T-001 | reqs: FR-X-04 | read: UI_REFERENCE sections 1, 2  (built, builds clean, unit-tested; the load-unpacked check on x.com is still to do)
 - do: `apps/extension` with Vite and `@crxjs/vite-plugin`, React, Tailwind, MV3 manifest for `https://x.com/*` and `https://twitter.com/*`. Content script mounts a Shadow DOM root; import `design-tokens.css` inside it. Bundle the two fonts. Empty launcher pill.
 - done when: loading the unpacked extension on x.com shows the pill with correct styling, and x.com styles are untouched.
 - note (2026-10-29 audit): `apps/extension` currently holds the legacy v2.1 design prototype (plain Vite, npm-era, hardcoded data, no shared package). Reuse `public/manifest.json` host config, the Shadow DOM mount in `src/content.tsx:71-83`, the `chrome.storage` showOverlay toggle and `service-worker.js`. Replace the two vite configs with `@crxjs/vite-plugin`, rename the package to `@predictx/extension`, add the `@predictx/shared` workspace dep, drop the side-panel app (`sidepanel.html`, `src/main.tsx`; overlay-only per D-007). Fix the old "Predidex" brand strings.
 
 ### T-A02 MSW mock server from fixtures
-- owner: A | status: todo | deps: T-001 | reqs: NFR-05
+- owner: A | status: dropped | deps: T-001 | reqs: NFR-05  (decision D-T4: the frontends use the real local backend; nothing is mocked)
 - do: MSW handlers for all 10 endpoints in `API_CONTRACT.md` returning `packages/shared/src/fixtures.ts`. Support `?fail=<ErrorCode>` and a `?delay=<ms>`. A `MOCK` flag shows the mock badge. Shared by extension and dashboard dev builds.
 - done when: every endpoint answers in a browser test and error modes work.
 
 ### T-A03 Page bridge and wallet client
-- owner: A | status: todo | deps: T-A01 | reqs: FR-X-05
+- owner: A | status: doing | deps: T-A01 | reqs: FR-X-05  (bridge + wallet controller built and unit-tested; connect/switch/sign on x.com still to check by hand)
 - do: main-world script registered for x.com that exposes `window.ethereum` calls via `postMessage` (request id, method, params, result or error). `getWalletClient()` returns a `viem` wallet client for the overlay (through the bridge) and for the dashboard (direct). Support: connect, chain switch (add Base Sepolia if missing), send transaction, `eth_signTypedData_v4` with a JSON string payload.
 - done when: from the overlay you can connect, switch network and sign a test typed-data message.
 

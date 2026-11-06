@@ -1,7 +1,13 @@
 export * from "./actions";
 export * from "./api";
 export * from "./chain";
+export * from "./components/primitives";
+export * from "./components/wallet";
+export * from "./copy";
 export * from "./create";
 export * from "./errors";
 export * from "./poll";
+export * from "./provider";
+export * from "./react/useExternal";
 export * from "./view";
+export { createWalletController, type WalletController, type WalletState, type WalletStatus } from "./wallet";
