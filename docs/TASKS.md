@@ -18,8 +18,8 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 | T-A06 | Swap tab: market order (A2) | A | T-A05, T-A03 | doing |
 | T-A07 | Swap tab: limit order | A | T-A06 | doing |
 | T-A08 | Insight tab (A3) | A | T-A07 | doing |
-| T-A09 | Create panel and launcher (A4) | A | T-A03, T-002 | todo |
-| T-A10 | Post step (A5) | A | T-A09 | todo |
+| T-A09 | Create panel and launcher (A4) | A | T-A03, T-002 | doing |
+| T-A10 | Post step (A5) | A | T-A09 | doing |
 | T-A11 | Dashboard scaffold, routing, wallet | A | T-A02, T-A03 | todo |
 | T-A12 | Pool page: bet, claim, refund (D2) | A | T-A11, T-002 | todo |
 | T-A13 | Dashboard home and faucet (D1, D3) | A | T-A12 | todo |
@@ -104,13 +104,13 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 - done when: tip, badges, degraded notice, and "Use suggested limit" filling the Limit tab all work in the mock.
 
 ### T-A09 Create panel and launcher (A4)
-- owner: A | status: todo | deps: T-A03, T-002 | reqs: FR-P-01, FR-P-02
+- owner: A | status: doing | deps: T-A03, T-002 | reqs: FR-P-01, FR-P-02
 - do: form, preview via `buildQuestion`, strike via `toStrikeE18`, network switch, `createPool` with the shared ABI, read `poolId` from the receipt.
 - done when: a pool is created on Base Sepolia and the id is shown.
 - note (2026-10-29 audit): legacy launcher is a round logo button, not the pill; create flow is a static preview. Rebuild.
 
 ### T-A10 Post step (A5)
-- owner: A | status: todo | deps: T-A09 | reqs: FR-P-03
+- owner: A | status: doing | deps: T-A09 | reqs: FR-P-03
 - done when: composer opens with `buildTweetText` output; copy-link and open-pool buttons work.
 - note (2026-10-29 audit): legacy code opens `x.com/intent/tweet` with prefilled text; confirm `intent/tweet` vs `intent/post` (DECISIONS open item).
 

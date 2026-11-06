@@ -14,7 +14,7 @@ const CARD_HEIGHT = 360;
 type Tab = "swap" | "insight";
 
 /** A1: the hover card. Header is live market data; Swap exists only for tokens Flash can trade. */
-export function TokenCard({ token, anchor, store }: { token: Token; anchor: AnchorRect; store: HoverStore }) {
+export function TokenCard({ token, anchor, store, onPredict }: { token: Token; anchor: AnchorRect; store: HoverStore; onPredict(symbol: string): void }) {
   const now = useNow();
   const { market, error, delayed, retry } = useMarket(token.symbol, now);
   const [tab, setTab] = useState<Tab>(token.flashSupported ? "swap" : "insight");
@@ -74,7 +74,10 @@ export function TokenCard({ token, anchor, store }: { token: Token; anchor: Anch
           onUseLimit={(price) => { setSuggestedLimit(price); setTab("swap"); }}
         />
       )}
-      {token.flashSupported ? <footer className="border-t border-rule px-4 py-2 text-right text-12 text-mute">Trades run on Base</footer> : null}
+      <footer className="flex items-center justify-between border-t border-rule px-4 py-2 text-12 text-mute">
+        <Button variant="secondary" size="sm" onClick={() => onPredict(token.symbol)}>{COPY.create_cta}</Button>
+        {token.flashSupported ? <span>Trades run on Base</span> : null}
+      </footer>
     </section>
   );
 }

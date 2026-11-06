@@ -1,13 +1,15 @@
-import { Button, WalletBar } from "@predictx/ui";
+import { Button, Notice } from "@predictx/ui";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { HoverStore } from "../x/hoverStore";
 import { TokenCard } from "./cards/TokenCard";
+import { CreatePanel } from "./create/CreatePanel";
 import { tokenStore } from "./tokens";
-import { chain, wallet } from "./wallet";
 
-/** Launcher pill (bottom right) plus the hover card. The pill's panel becomes the Create panel in M5. */
+/** Launcher pill (bottom right) that opens the Create panel, plus the hover card. */
 export function Overlay({ hover }: { hover: HoverStore }) {
-  const [open, setOpen] = useState(false);
+  const [panel, setPanel] = useState<{ open: boolean; symbol: string | null; run: number }>({ open: false, symbol: null, run: 0 });
+  const closePanel = (): void => setPanel((p) => ({ ...p, open: false }));
+  const openPanel = (symbol: string | null): void => setPanel((p) => ({ open: true, symbol, run: p.run + 1 }));
   const hovered = useSyncExternalStore(hover.subscribe, hover.getState, hover.getState);
   const tokens = useSyncExternalStore(tokenStore.subscribe, tokenStore.get, tokenStore.get);
   const token = hovered.symbol ? tokens.find((t) => t.symbol === hovered.symbol) : undefined;
@@ -16,7 +18,7 @@ export function Overlay({ hover }: { hover: HoverStore }) {
     const onKey = (event: KeyboardEvent): void => {
       if (event.key !== "Escape") return;
       hover.close();
-      setOpen(false);
+      closePanel();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -24,21 +26,21 @@ export function Overlay({ hover }: { hover: HoverStore }) {
 
   return (
     <>
-      {token && hovered.anchor ? <TokenCard key={token.symbol} token={token} anchor={hovered.anchor} store={hover} /> : null}
-      {open ? (
+      {token && hovered.anchor ? <TokenCard key={token.symbol} token={token} anchor={hovered.anchor} store={hover} onPredict={(symbol) => { hover.close(); openPanel(symbol); }} /> : null}
+      {panel.open ? (
         <section
           aria-label="PredictX"
-          className="px-card-in pointer-events-auto fixed bottom-[72px] right-5 w-[360px] max-w-[calc(100vw-24px)] rounded-card border border-rule bg-ink p-4 text-text shadow-card"
+          className="px-card-in pointer-events-auto fixed bottom-[72px] right-5 max-h-[calc(100vh-96px)] w-[360px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-card border border-rule bg-ink p-4 text-text shadow-card"
         >
-          <header className="mb-3 flex items-center justify-between">
-            <h2 className="m-0 font-display text-20 font-bold">PredictX</h2>
-            <Button variant="ghost" size="sm" aria-label="Close" onClick={() => setOpen(false)}>x</Button>
-          </header>
-          <WalletBar controller={wallet} expectedChainId={chain.chainId} />
+          {tokens.length > 0 ? (
+            <CreatePanel key={panel.run} tokens={tokens} initialSymbol={panel.symbol} onClose={closePanel} />
+          ) : (
+            <Notice kind="info">Connecting to the PredictX server...</Notice>
+          )}
         </section>
       ) : null}
       <div className="pointer-events-auto fixed bottom-5 right-5">
-        <Button onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <Button onClick={() => (panel.open ? closePanel() : openPanel(null))} aria-expanded={panel.open}>
           PredictX
         </Button>
       </div>

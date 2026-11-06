@@ -165,6 +165,43 @@ export const predictionPoolAbi = [
       { name: "amount", type: "uint256", indexed: false },
     ],
   },
+  /* ---------- custom errors (so a revert reason can be decoded; mirrors PredictionPool.sol) ---------- */
+  { type: "error", name: "ZeroAddress", inputs: [] },
+  { type: "error", name: "PoolNotFound", inputs: [{ name: "id", type: "uint256" }] },
+  { type: "error", name: "ResolveTimeTooSoon", inputs: [{ name: "resolveTime", type: "uint64" }] },
+  { type: "error", name: "QuestionTooLong", inputs: [{ name: "length", type: "uint256" }] },
+  { type: "error", name: "InvalidDirection", inputs: [{ name: "direction", type: "uint8" }] },
+  { type: "error", name: "ZeroAmount", inputs: [] },
+  { type: "error", name: "StakingClosed", inputs: [{ name: "id", type: "uint256" }] },
+  {
+    type: "error",
+    name: "InvalidSender",
+    inputs: [
+      { name: "sender", type: "address" },
+      { name: "expected", type: "address" },
+    ],
+  },
+  { type: "error", name: "AlreadyResolved", inputs: [{ name: "id", type: "uint256" }] },
+  { type: "error", name: "TooEarly", inputs: [{ name: "id", type: "uint256" }] },
+  { type: "error", name: "NotResolved", inputs: [{ name: "id", type: "uint256" }] },
+  { type: "error", name: "PoolIsVoid", inputs: [{ name: "id", type: "uint256" }] },
+  { type: "error", name: "PoolNotVoid", inputs: [{ name: "id", type: "uint256" }] },
+  {
+    type: "error",
+    name: "NothingToClaim",
+    inputs: [
+      { name: "id", type: "uint256" },
+      { name: "user", type: "address" },
+    ],
+  },
+  {
+    type: "error",
+    name: "AlreadyClaimed",
+    inputs: [
+      { name: "id", type: "uint256" },
+      { name: "user", type: "address" },
+    ],
+  },
 ] as const;
 
 /** MockUSDC on Base Sepolia: the ERC-20 subset the faucet and the stake flow use (API_CONTRACT section 4). */
@@ -212,5 +249,13 @@ export const mockUsdcAbi = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ name: "", type: "uint8" }],
+  },
+  {
+    type: "error",
+    name: "MintCapExceeded",
+    inputs: [
+      { name: "amount", type: "uint256" },
+      { name: "max", type: "uint256" },
+    ],
   },
 ] as const;

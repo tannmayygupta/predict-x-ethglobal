@@ -37,6 +37,12 @@ const REVERTS: Record<string, [UiErrorCode, string]> = {
   ZeroAmount: ["BAD_INPUT", "Enter an amount above zero."],
   NothingToClaim: ["NOTHING_TO_CLAIM", "There is nothing to claim for this wallet."],
   AlreadyClaimed: ["ALREADY_CLAIMED", "Already claimed."],
+  QuestionTooLong: ["BAD_INPUT", "The question is too long. Use a shorter strike price."],
+  InvalidDirection: ["BAD_INPUT", "Choose above or below."],
+  MintCapExceeded: ["BAD_INPUT", "The most you can mint at once is 1000 USDC."],
+  NotResolved: ["CHAIN_ERROR", "This pool has not been settled yet."],
+  PoolIsVoid: ["CHAIN_ERROR", "This pool is void. Use refund instead."],
+  PoolNotVoid: ["CHAIN_ERROR", "This pool is not void, so there is nothing to refund."],
 };
 
 interface Walkable {

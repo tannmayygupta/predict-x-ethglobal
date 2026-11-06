@@ -50,8 +50,8 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked on a human input · ⬜ not 
 | T-A06 | Swap tab: market order | 🟡 | 70 | | Quote-only by design (D-T1); needs a Flash key to see real quotes |
 | T-A07 | Swap tab: limit order | 🟡 | 70 | | Limit quote built; same key needed |
 | T-A08 | Insight tab | 🟡 | 80 | | Insight built; real tips need an OpenAI key |
-| T-A09 | Create pool panel and launcher | ⬜ | 5 | | T-A03, T-002 ✅ |
-| T-A10 | Post pool to X | ⬜ | 5 | | T-A09 |
+| T-A09 | Create pool panel and launcher | 🟡 | 80 | | Form + preview + createPool built; args verified against the live contract by simulation; a funded wallet run is pending |
+| T-A10 | Post pool to X | 🟡 | 80 | | Post step built (x.com/intent/post) |
 | T-A14 | Bet box under tweets | ⬜ | 0 | | T-A12, T-A04 |
 
 ## Dashboard website (role A)
