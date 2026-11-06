@@ -114,3 +114,8 @@ M5: Create panel builds the exact onchain question (strike canonicalised, resolv
 Found by live test: the shared ABI had no custom errors, so every contract revert surfaced as a generic error. Added the PredictionPool and MockUSDC errors to packages/shared/src/abi.ts (additive, mirrors the Solidity). The keyless live test (packages/ui/test/live/createSimulation.live.test.ts) now proves, against the deployed contract: createPool accepts the exact arguments for ETH/PEPE/BTC, a too-soon close time maps to RESOLVE_TOO_SOON, an over-long question is refused, claiming a missing pool maps to POOL_NOT_FOUND.
 Tests: shared 8, ui 62 (+6 live), backend 477 (+1 skipped on Windows), extension 67. Extension builds clean.
 
+## M6 dashboard  (A, 2026-11-06)
+apps/dashboard (Vite + React Router + Tailwind): `/` latest 20 pools refreshed every 10 s, `/pool/:id` (shared PoolSlip, position, details, copy link, Post to X), `/faucet` (mint 100 test USDC, live balance). The PoolSlip lives in @predictx/ui so the tweet bet box (M7) reuses it. After a transaction the pool is read straight from the chain for 20 s (the backend caches 10 s). `stake` reports its two steps (approve exact amount, then bet) so the screen can name each wallet prompt.
+Verification: `tsc` and `vite build` clean, no key names in dist. 14 render tests of PoolSlip assert the exact deck copy for open, empty, awaiting, resolved winner/loser/claimed, void, and the wallet gates (no MetaMask, not connected, wrong network). Not verified: a visual check in a browser. The Chrome tool in this session runs on a different network than the dev machine and could not reach localhost, so the human must look at http://localhost:5173.
+Dev servers listen on both IPv4 and IPv6 (`host: "::"`).
+

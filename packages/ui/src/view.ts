@@ -71,3 +71,13 @@ export function isMockQuote(quoteId: string): boolean {
 
 /** Price age after which the card says "Price delayed" even if the refresh did not fail outright. */
 export const STALE_PRICE_SECONDS = 120;
+
+export const STATUS_LABEL = { open: "Open", awaiting: "Awaiting result", resolved: "Resolved", void: "Void" } as const;
+
+/**
+ * The backend derives status from its own clock; the local clock may already be past the close. Betting is shown
+ * as closed the moment the countdown hits zero, whichever clock is ahead. The contract has the final say.
+ */
+export function effectiveStatus(pool: { status: "open" | "awaiting" | "resolved" | "void"; resolveTime: number }, now: number) {
+  return pool.status === "open" && now >= pool.resolveTime ? ("awaiting" as const) : pool.status;
+}

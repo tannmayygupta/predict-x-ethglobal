@@ -40,3 +40,19 @@ describe("poolSize", () => {
     expect(poolSize("60000000", "40000000")).toBe("100.00");
   });
 });
+
+import { effectiveStatus, STATUS_LABEL } from "../src/view";
+
+describe("effectiveStatus", () => {
+  it("shows an open pool as awaiting once the local clock passes the close", () => {
+    expect(effectiveStatus({ status: "open", resolveTime: 100 }, 99)).toBe("open");
+    expect(effectiveStatus({ status: "open", resolveTime: 100 }, 100)).toBe("awaiting");
+  });
+  it("never changes a settled pool", () => {
+    expect(effectiveStatus({ status: "resolved", resolveTime: 100 }, 50)).toBe("resolved");
+    expect(effectiveStatus({ status: "void", resolveTime: 100 }, 50)).toBe("void");
+  });
+  it("has the four labels from FR-P-09", () => {
+    expect(Object.values(STATUS_LABEL)).toEqual(["Open", "Awaiting result", "Resolved", "Void"]);
+  });
+});

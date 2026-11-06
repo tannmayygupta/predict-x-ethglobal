@@ -58,9 +58,9 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked on a human input · ⬜ not 
 
 | ID | Task | Status | % | Assignee | Depends on |
 | --- | --- | --- | --- | --- | --- |
-| T-A11 | Dashboard scaffold, routing, wallet | ⬜ | 0 | | T-A02, T-A03 |
-| T-A12 | Pool page: bet, claim, refund | ⬜ | 0 | | T-A11, T-002 ✅ |
-| T-A13 | Home page and test USDC faucet | ⬜ | 0 | | T-A12 |
+| T-A11 | Dashboard scaffold, routing, wallet | 🟡 | 80 | | Routes, top bar, wallet built; needs a browser check on the user machine |
+| T-A12 | Pool page: bet, claim, refund | 🟡 | 80 | | Slip with all five states built and render-tested; funded-wallet run pending |
+| T-A13 | Home page and test USDC faucet | 🟡 | 80 | | Home list and faucet built |
 
 ## Frontend integration (role A)
 

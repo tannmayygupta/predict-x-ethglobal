@@ -20,9 +20,9 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 | T-A08 | Insight tab (A3) | A | T-A07 | doing |
 | T-A09 | Create panel and launcher (A4) | A | T-A03, T-002 | doing |
 | T-A10 | Post step (A5) | A | T-A09 | doing |
-| T-A11 | Dashboard scaffold, routing, wallet | A | T-A02, T-A03 | todo |
-| T-A12 | Pool page: bet, claim, refund (D2) | A | T-A11, T-002 | todo |
-| T-A13 | Dashboard home and faucet (D1, D3) | A | T-A12 | todo |
+| T-A11 | Dashboard scaffold, routing, wallet | A | T-A02, T-A03 | doing |
+| T-A12 | Pool page: bet, claim, refund (D2) | A | T-A11, T-002 | doing |
+| T-A13 | Dashboard home and faucet (D1, D3) | A | T-A12 | doing |
 | T-A14 | Bet box on tweets (A6) | A | T-A12, T-A04 | todo |
 | T-A15 | States, copy and polish pass | A | T-A14, T-A08 | todo |
 | T-A16 | Switch to real backend, run merge checklist | A | T-B10, T-A15 | todo |
@@ -115,16 +115,16 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 - note (2026-10-29 audit): legacy code opens `x.com/intent/tweet` with prefilled text; confirm `intent/tweet` vs `intent/post` (DECISIONS open item).
 
 ### T-A11 Dashboard scaffold, routing, wallet
-- owner: A | status: todo | deps: T-A02, T-A03 | reqs: FR-P-06 | read: UI_REFERENCE D1 to D3 layout, top bar
+- owner: A | status: doing | deps: T-A02, T-A03 | reqs: FR-P-06 | read: UI_REFERENCE D1 to D3 layout, top bar
 - done when: routes `/`, `/pool/:id`, `/faucet` render with the top bar, wallet connect and network pill.
 
 ### T-A12 Pool page: bet, claim, refund (D2)
-- owner: A | status: todo | deps: T-A11, T-002 | reqs: FR-P-05, FR-P-06, FR-P-07, FR-P-09
+- owner: A | status: doing | deps: T-A11, T-002 | reqs: FR-P-05, FR-P-06, FR-P-07, FR-P-09
 - do: Slip component, OddsBar, Countdown, exact-amount approve, `stake`, `claim`, `refund`, position panel, refetch every 10 s and after transactions.
 - done when: all pool statuses (open, awaiting, resolved winner, resolved loser, void) render correctly from fixtures, and a real stake on the stub contract works.
 
 ### T-A13 Dashboard home and faucet (D1, D3)
-- owner: A | status: todo | deps: T-A12 | reqs: FR-P-08
+- owner: A | status: doing | deps: T-A12 | reqs: FR-P-08
 - done when: home lists pools with empty, loading and error states; faucet mints test USDC.
 
 ### T-A14 Bet box on tweets (A6)

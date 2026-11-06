@@ -83,8 +83,10 @@ function parseAmount(amountUsdc: string): bigint {
   throw new UiError("BAD_INPUT", "Enter an amount above zero, with at most 6 decimals.");
 }
 
-/** Approves exactly the amount being bet (never unlimited), then stakes. */
-export function stake(session: Session, input: StakeInput): Promise<StakeResult> {
+export type StakeStep = "approving" | "staking";
+
+/** Approves exactly the amount being bet (never unlimited), then stakes. `onStep` lets the screen name each wallet prompt. */
+export function stake(session: Session, input: StakeInput, onStep?: (step: StakeStep) => void): Promise<StakeResult> {
   return guarded(async () => {
     const units = parseAmount(input.amountUsdc);
     await assertNetwork(session);
@@ -98,11 +100,13 @@ export function stake(session: Session, input: StakeInput): Promise<StakeResult>
 
     let approvalHash: Hex | null = null;
     if (allowance < units) {
+      onStep?.("approving");
       const { request } = await chain.publicClient.simulateContract({
         account: session.account, address: chain.usdcAddress, abi: mockUsdcAbi, functionName: "approve", args: [chain.poolAddress, units],
       });
       approvalHash = await confirmed(session, await session.wallet.writeContract(request));
     }
+    onStep?.("staking");
     const { request } = await chain.publicClient.simulateContract({
       account: session.account, address: chain.poolAddress, abi: predictionPoolAbi, functionName: "stake",
       args: [BigInt(input.poolId), input.isYes, units],
