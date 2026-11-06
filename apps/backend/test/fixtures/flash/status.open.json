@@ -1,0 +1,41 @@
+{
+  "order": {
+    "orderId": "9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+    "orderType": "limit",
+    "side": "buy",
+    "status": "ORDER_STATUS_ACCEPTED",
+    "closeReason": null,
+    "funderAddress": "0x1111111111111111111111111111111111111111",
+    "recipientAddress": "0x1111111111111111111111111111111111111111",
+    "integratorFeeBps": null,
+    "tradeFeeBps": null,
+    "targetAsset": {
+      "id": "base-weth",
+      "name": "Wrapped Ethereum",
+      "address": "0x4200000000000000000000000000000000000006",
+      "ticker": "WETH",
+      "chain": { "id": "base", "name": "Base", "namespace": "evm" }
+    },
+    "contraAsset": {
+      "id": "base-usdc",
+      "name": "USDC",
+      "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "ticker": "USDC",
+      "chain": { "id": "base", "name": "Base", "namespace": "evm" }
+    },
+    "qty": "2",
+    "filled": null,
+    "limitNotionalPrice": "2380",
+    "limitCrossPrice": null,
+    "trigger": null,
+    "brackets": null,
+    "attachedBracket": null,
+    "maxPriceImpact": null,
+    "twapBucketCount": null,
+    "placedAt": "2025-10-27T22:00:00Z",
+    "acceptedAt": "2025-10-27T22:00:05Z",
+    "closedAt": null,
+    "expiresAt": null
+  },
+  "fills": []
+}

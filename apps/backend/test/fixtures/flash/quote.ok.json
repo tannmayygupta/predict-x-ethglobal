@@ -1,0 +1,24 @@
+{
+  "quoteId": "336d48fe-3dfb-4bf6-8300-d3b88aaf23c8",
+  "bridgeQuoteId": null,
+  "orderType": "market",
+  "side": "buy",
+  "targetAsset": "0x4200000000000000000000000000000000000006",
+  "contraAsset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  "from": { "asset": "contra", "amount": "2", "notional": "2" },
+  "to": { "asset": "target", "amount": "0.000839667739435631", "notional": "1.978124" },
+  "fees": { "estimatedFeeNotional": "0" },
+  "estimatedPriceImpact": "0.0003405",
+  "recommendedSlippage": "0.15",
+  "wrap": null,
+  "evm": {
+    "approveTx": {
+      "to": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "data": "0x095ea7b30000000000000000000000005d00000873b6bf41539e6f5365b0ff7d3c368f78ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    "permitTypedData": "",
+    "orderTypedData": "{\"types\":{\"EIP712Domain\":[{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"version\",\"type\":\"string\"},{\"name\":\"chainId\",\"type\":\"uint256\"},{\"name\":\"verifyingContract\",\"type\":\"address\"}],\"FlashOrder\":[{\"name\":\"swapper\",\"type\":\"address\"},{\"name\":\"vault\",\"type\":\"address\"},{\"name\":\"recipient\",\"type\":\"address\"},{\"name\":\"fromToken\",\"type\":\"address\"},{\"name\":\"toToken\",\"type\":\"address\"},{\"name\":\"fromAmount\",\"type\":\"uint256\"},{\"name\":\"salt\",\"type\":\"uint256\"},{\"name\":\"deadline\",\"type\":\"uint256\"}]},\"primaryType\":\"FlashOrder\",\"domain\":{\"name\":\"DefinitiveFlashAllowance\",\"version\":\"1\",\"chainId\":\"8453\",\"verifyingContract\":\"0x5d00000873b6BF41539e6f5365B0Ff7d3c368f78\"},\"message\":{\"swapper\":\"0x1111111111111111111111111111111111111111\",\"vault\":\"0x1074393effFCf1A15e306cD3931F48eDA9ABcd55\",\"recipient\":\"0x1111111111111111111111111111111111111111\",\"fromToken\":\"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913\",\"toToken\":\"0x4200000000000000000000000000000000000006\",\"fromAmount\":\"2000000\",\"salt\":\"1\",\"deadline\":\"1761600300\"}}"
+  },
+  "svm": null,
+  "setupTxs": null
+}

@@ -1,0 +1,172 @@
+import {
+  CHAINS,
+  FLASH_BASE_ASSETS,
+  type FlashOrderDetail,
+  type FlashOrderRequest,
+  type FlashQuoteRequest,
+  type FlashQuoteResponse,
+  type OrderStatus,
+  type Token,
+} from "@predictx/shared";
+import {
+  FlashError,
+  QUOTE_TTL_SECONDS,
+  type FlashOrderBody,
+  type FlashQuoteBody,
+  type FlashQuoteInput,
+  type FlashStatusInput,
+  type RawFlashOrder,
+  type RawFlashQuote,
+  type StoredFlashQuote,
+} from "./flash.types";
+
+/** The MVP spends USDC only (D-002); Flash reports the spent leg as `from` without a symbol. */
+const SPEND_SYMBOL = "USDC";
+
+/** Our /flash/quote request to Flash's POST /quote body (API_CONTRACT section 6, corrected by docs/notes). */
+export function toFlashQuoteBody(request: FlashQuoteRequest, token: Token): FlashQuoteBody {
+  if (token.address === null) {
+    // Routes reject non-Flash tokens with UNSUPPORTED_TOKEN before reaching here; this guards the type only.
+    throw new FlashError(`${token.symbol} has no Flash asset address`);
+  }
+  const body: FlashQuoteBody = {
+    targetChain: CHAINS.BASE_MAINNET.flashName,
+    contraChain: CHAINS.BASE_MAINNET.flashName,
+    targetAsset: token.address,
+    contraAsset: FLASH_BASE_ASSETS.USDC,
+    side: request.side,
+    qty: request.amount,
+    orderType: request.orderType,
+    funderAddress: request.walletAddress,
+  };
+  // GATE0: confirm. Docs: maxSlippage is a market-order parameter (limit orders use maxPriceImpact), and
+  // "only market rejects a limit price outright", so each key is sent for exactly one order type.
+  if (request.orderType === "market") body.maxSlippage = request.slippage;
+  if (request.orderType === "limit" && request.limitPriceUsd) body.limitNotionalPrice = request.limitPriceUsd;
+  return body;
+}
+
+/** Flash sends `""` (and may send null) when Permit2 is unused; the contract says null (notes section 3.2). */
+function presentOrNull(value: string | null | undefined): string | null {
+  return value ? value : null;
+}
+
+/** Flash's quote response into our FlashQuoteResponse; typed-data strings pass through untouched (RULES 4.4). */
+export function fromFlashQuote(raw: RawFlashQuote, input: FlashQuoteInput, now: number): FlashQuoteResponse {
+  const orderTypedData = presentOrNull(raw.evm?.orderTypedData);
+  if (orderTypedData === null) {
+    // Flash returns an empty payload when funderAddress was omitted; without it nothing can be signed.
+    throw new FlashError("flash quote has no orderTypedData");
+  }
+  return {
+    quoteId: raw.quoteId,
+    // Flash has no expiry field; API_CONTRACT section 6 fixes ours at quote time + 60 s.
+    expiresAt: now + QUOTE_TTL_SECONDS,
+    orderType: input.request.orderType,
+    side: input.request.side,
+    chain: CHAINS.BASE_MAINNET.flashName,
+    chainId: CHAINS.BASE_MAINNET.id,
+    spend: { symbol: SPEND_SYMBOL, amount: raw.from.amount },
+    receive: { symbol: input.token.symbol, amount: raw.to.amount },
+    feesUsd: raw.fees.estimatedFeeNotional,
+    estimatedPriceImpact: raw.estimatedPriceImpact,
+    steps: {
+      approveTx: raw.evm?.approveTx ?? null,
+      permitTypedData: presentOrNull(raw.evm?.permitTypedData),
+      orderTypedData,
+    },
+  };
+}
+
+/**
+ * Our /flash/order request into Flash's POST /order body: Flash wants the original trade fields back
+ * alongside the signature, and the typed data echoed byte-for-byte (notes section 4.1, RULES 4.4).
+ */
+export function toFlashOrderBody(stored: StoredFlashQuote, order: FlashOrderRequest): FlashOrderBody {
+  const body: FlashOrderBody = {
+    ...stored.body,
+    quoteId: stored.quoteId,
+    userSignature: order.orderSignature,
+    evmOrderTypedData: stored.rawTypedData.orderTypedData,
+  };
+  const permitTypedData = stored.rawTypedData.permitTypedData;
+  if (permitTypedData !== null) {
+    if (!order.permitSignature) {
+      throw new FlashError("permitSignature is required: the quote returned permit typed data");
+    }
+    body.evmPermitTypedData = permitTypedData;
+    body.evmPermitSignature = order.permitSignature;
+  }
+  return body;
+}
+
+export interface MappedStatus {
+  status: OrderStatus;
+  error: string | null;
+}
+
+/** Flash's eight ORDER_STATUS_* values onto ours (notes section 5.2). GATE0: confirm against real orders. */
+const STATUS_BY_FLASH: Record<string, OrderStatus> = {
+  ORDER_STATUS_UNSPECIFIED: "submitted",
+  ORDER_STATUS_PENDING: "submitted",
+  ORDER_STATUS_ACCEPTED: "open",
+  ORDER_STATUS_PARTIALLY_FILLED: "open",
+  ORDER_STATUS_FILLED: "filled",
+  ORDER_STATUS_CANCELLED: "failed",
+  ORDER_STATUS_REJECTED: "failed",
+  ORDER_STATUS_TERMINATED: "failed",
+};
+
+/**
+ * GATE0: confirm. The docs do not say which terminal status an unfilled order lands in once its deadline
+ * passes, so expiry is detected by closeReason on every failed status rather than by one status value.
+ */
+const EXPIRED_CLOSE_REASON = "REASON_ORDER_EXPIRED";
+
+const UNKNOWN_STATUS_PREFIX = "unknown flash status: ";
+
+/** Never throws: a status this code has not seen becomes `failed` with the raw value in `error`. */
+export function mapFlashStatus(raw: string, closeReason: string | null): MappedStatus {
+  const mapped = STATUS_BY_FLASH[raw];
+  if (mapped === undefined) return { status: "failed", error: `${UNKNOWN_STATUS_PREFIX}${raw}` };
+  if (mapped !== "failed") return { status: mapped, error: null };
+  if (closeReason === EXPIRED_CLOSE_REASON) return { status: "expired", error: closeReason };
+  return { status: "failed", error: closeReason ?? raw };
+}
+
+/**
+ * True for the `failed` that mapFlashStatus reports for a status it has not seen: the order may still be live
+ * at Flash, so the caller must keep polling it rather than treat it as terminal (D-B3).
+ */
+export function isUnknownFlashStatus(mapped: MappedStatus): boolean {
+  return mapped.status === "failed" && mapped.error !== null && mapped.error.startsWith(UNKNOWN_STATUS_PREFIX);
+}
+
+const MS_PER_SECOND = 1000;
+
+function isoToUnixSeconds(iso: string | null | undefined): number | undefined {
+  if (!iso) return undefined;
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? undefined : Math.floor(ms / MS_PER_SECOND);
+}
+
+/** Flash's get-order body into our FlashOrderDetail. GATE0: confirm fill ordering (latest fill assumed last). */
+export function fromFlashOrder(raw: RawFlashOrder, input: FlashStatusInput, now: number): FlashOrderDetail {
+  const { status, error } = mapFlashStatus(raw.order.status, raw.order.closeReason ?? null);
+  const txHashes = raw.fills.map((fill) => fill.transactionId).filter((id): id is string => !!id);
+  return {
+    orderId: input.orderId,
+    status,
+    orderType: input.orderType,
+    txHash: txHashes.at(-1) ?? null,
+    chainId: CHAINS.BASE_MAINNET.id,
+    filledAmount: raw.order.filled?.targetAmount ?? null,
+    error,
+    // The newest of Flash's ISO timestamps; `now` only when it sent none, so polling still shows movement.
+    updatedAt:
+      isoToUnixSeconds(raw.order.closedAt) ??
+      isoToUnixSeconds(raw.order.acceptedAt) ??
+      isoToUnixSeconds(raw.order.placedAt) ??
+      now,
+  };
+}

@@ -1,0 +1,60 @@
+{
+  "order": {
+    "orderId": "7f0c1b2e-5a3d-4c1e-9b7a-2d4f6e8a1c3b",
+    "orderType": "market",
+    "side": "buy",
+    "status": "ORDER_STATUS_FILLED",
+    "closeReason": "REASON_FULLY_FILLED",
+    "funderAddress": "0x1111111111111111111111111111111111111111",
+    "recipientAddress": "0x1111111111111111111111111111111111111111",
+    "integratorFeeBps": null,
+    "tradeFeeBps": null,
+    "targetAsset": {
+      "id": "base-weth",
+      "name": "Wrapped Ethereum",
+      "address": "0x4200000000000000000000000000000000000006",
+      "ticker": "WETH",
+      "chain": { "id": "base", "name": "Base", "namespace": "evm" }
+    },
+    "contraAsset": {
+      "id": "base-usdc",
+      "name": "USDC",
+      "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "ticker": "USDC",
+      "chain": { "id": "base", "name": "Base", "namespace": "evm" }
+    },
+    "qty": "2",
+    "filled": { "targetAmount": "0.000839", "contraAmount": "2", "averagePrice": "2382.5", "averageNotionalPrice": "2382.5" },
+    "limitNotionalPrice": null,
+    "limitCrossPrice": null,
+    "trigger": null,
+    "brackets": null,
+    "attachedBracket": null,
+    "maxPriceImpact": null,
+    "twapBucketCount": null,
+    "placedAt": "2025-10-27T22:00:00Z",
+    "acceptedAt": "2025-10-27T22:00:01Z",
+    "closedAt": "2025-10-27T22:00:30Z",
+    "expiresAt": null
+  },
+  "fills": [
+    {
+      "status": "CHAIN_STATUS_PROCESSED",
+      "notional": "2",
+      "venues": ["uniswap-v3"],
+      "filledAt": "2025-10-27T22:00:30Z",
+      "rootOrderId": "7f0c1b2e-5a3d-4c1e-9b7a-2d4f6e8a1c3b",
+      "orderId": "7f0c1b2e-5a3d-4c1e-9b7a-2d4f6e8a1c3b",
+      "parentOrderId": "7f0c1b2e-5a3d-4c1e-9b7a-2d4f6e8a1c3b",
+      "transactionId": "0x4444444444444444444444444444444444444444444444444444444444444444",
+      "fillPrice": "2382.5",
+      "feeAmount": "0",
+      "feeTicker": "USDC",
+      "integratorFeeAmount": "0",
+      "feeNotional": "0",
+      "integratorFeeNotional": "0",
+      "contraAmount": "2",
+      "targetAmount": "0.000839"
+    }
+  ]
+}
