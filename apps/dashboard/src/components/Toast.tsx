@@ -19,7 +19,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={show}>
       {children}
       {message ? (
-        <div role="status" className="fixed bottom-6 left-1/2 z-overlay -translate-x-1/2 rounded-button border border-rule bg-ink px-4 py-3 text-14 font-semibold text-text shadow-card">
+        <div role="status" className="fixed bottom-6 left-0 right-0 z-overlay mx-auto w-fit rounded-button border border-rule bg-ink px-4 py-3 text-14 font-semibold text-text shadow-card">
           {message}
         </div>
       ) : null}

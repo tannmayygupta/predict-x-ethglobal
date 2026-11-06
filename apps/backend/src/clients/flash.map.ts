@@ -19,6 +19,7 @@ import {
   type RawFlashQuote,
   type StoredFlashQuote,
 } from "./flash.types";
+import { numberToDecimalString } from "../util/decimal";
 
 /** The MVP spends USDC only (D-002); Flash reports the spent leg as `from` without a symbol. */
 const SPEND_SYMBOL = "USDC";
@@ -51,6 +52,19 @@ function presentOrNull(value: string | null | undefined): string | null {
   return value ? value : null;
 }
 
+/**
+ * The contract allows only a plain, non-negative decimal here. Flash can print a tiny impact in exponent form
+ * ("3.4e-7") or a favourable fill as a negative number; either would fail response validation and turn a good quote
+ * into an error. Exponent form is expanded, a favourable (negative) impact is shown as zero, and a value that is
+ * not a number at all becomes null, which the contract allows.
+ */
+export function plainPriceImpact(value: string | null): string | null {
+  if (value === null || /^\d+(\.\d+)?$/.test(value)) return value;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return n <= 0 ? "0" : numberToDecimalString(n);
+}
+
 /** Flash's quote response into our FlashQuoteResponse; typed-data strings pass through untouched (RULES 4.4). */
 export function fromFlashQuote(raw: RawFlashQuote, input: FlashQuoteInput, now: number): FlashQuoteResponse {
   const orderTypedData = presentOrNull(raw.evm?.orderTypedData);
@@ -69,7 +83,7 @@ export function fromFlashQuote(raw: RawFlashQuote, input: FlashQuoteInput, now: 
     spend: { symbol: SPEND_SYMBOL, amount: raw.from.amount },
     receive: { symbol: input.token.symbol, amount: raw.to.amount },
     feesUsd: raw.fees.estimatedFeeNotional,
-    estimatedPriceImpact: raw.estimatedPriceImpact,
+    estimatedPriceImpact: plainPriceImpact(raw.estimatedPriceImpact),
     steps: {
       approveTx: raw.evm?.approveTx ?? null,
       permitTypedData: presentOrNull(raw.evm?.permitTypedData),

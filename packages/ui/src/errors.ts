@@ -4,6 +4,7 @@
  */
 export type UiErrorCode =
   | "NO_WALLET"
+  | "NOT_AUTHORIZED"
   | "WRONG_NETWORK"
   | "USER_REJECTED"
   | "NEED_USDC"
@@ -28,6 +29,7 @@ export class UiError extends Error {
 }
 
 const USER_REJECTED_CODE = 4001; // EIP-1193
+const UNAUTHORIZED_CODE = 4100; // EIP-1193: the wallet has not approved this site for the account or method
 
 /** Revert reasons of PredictionPool.sol mapped to codes. Anything else stays a generic chain error. */
 const REVERTS: Record<string, [UiErrorCode, string]> = {
@@ -69,6 +71,13 @@ export function toUiError(err: unknown): UiError {
   const links = chain(err);
   if (links.some((e) => e.code === USER_REJECTED_CODE || e.name === "UserRejectedRequestError")) {
     return new UiError("USER_REJECTED", "You rejected the request in your wallet.", { cause: err });
+  }
+  if (links.some((e) => e.code === UNAUTHORIZED_CODE || e.name === "UnauthorizedProviderError")) {
+    return new UiError(
+      "NOT_AUTHORIZED",
+      "MetaMask has not approved this site for this account or network. In MetaMask, connect this site to the account you picked with Base Sepolia selected, then try again.",
+      { cause: err },
+    );
   }
   for (const link of links) {
     const name = link.data?.errorName;

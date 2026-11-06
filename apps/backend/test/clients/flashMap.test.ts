@@ -12,6 +12,7 @@ import {
   fromFlashOrder,
   fromFlashQuote,
   isUnknownFlashStatus,
+  plainPriceImpact,
   mapFlashStatus,
   toFlashOrderBody,
   toFlashQuoteBody,
@@ -130,6 +131,24 @@ describe("B03-10 fromFlashQuote steps", () => {
   it("throws FlashError when Flash returns no orderTypedData (funderAddress missing upstream)", () => {
     expect(() => fromFlashQuote(rawQuote({ orderTypedData: "" }), MARKET_INPUT, NOW)).toThrow(FlashError);
     expect(() => fromFlashQuote({ ...rawQuote(), evm: null }, MARKET_INPUT, NOW)).toThrow(/orderTypedData/);
+  });
+});
+
+describe("fromFlashQuote price impact", () => {
+  it.each([
+    ["a plain decimal passes through unchanged", "0.0003685", "0.0003685"],
+    ["exponent form is expanded", "3.4e-7", "0.00000034"],
+    ["a favourable (negative) impact shows as zero", "-0.0001", "0"],
+    ["zero stays zero", "0", "0"],
+    ["text that is not a number becomes null", "n/a", null],
+  ])("%s", (_name, input, expected) => {
+    expect(plainPriceImpact(input)).toBe(expected);
+    const quote = FlashQuoteResponse.parse(fromFlashQuote({ ...rawQuote(), estimatedPriceImpact: input }, MARKET_INPUT, NOW));
+    expect(quote.estimatedPriceImpact).toBe(expected);
+  });
+
+  it("keeps null as null", () => {
+    expect(plainPriceImpact(null)).toBeNull();
   });
 });
 

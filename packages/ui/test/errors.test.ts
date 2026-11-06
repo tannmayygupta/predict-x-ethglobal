@@ -12,6 +12,12 @@ describe("toUiError", () => {
     expect(toUiError(nested({ code: 4001 })).code).toBe("USER_REJECTED");
     expect(toUiError(nested({ name: "UserRejectedRequestError" })).code).toBe("USER_REJECTED");
   });
+  it("explains a wallet 4100 (site not approved for the account or network) instead of showing the raw text", () => {
+    const e = toUiError(nested({ code: 4100 }));
+    expect(e.code).toBe("NOT_AUTHORIZED");
+    expect(e.message).toContain("MetaMask has not approved this site");
+    expect(toUiError(nested({ name: "UnauthorizedProviderError" })).code).toBe("NOT_AUTHORIZED");
+  });
   it.each([
     ["StakingClosed", "POOL_CLOSED"],
     ["ResolveTimeTooSoon", "RESOLVE_TOO_SOON"],

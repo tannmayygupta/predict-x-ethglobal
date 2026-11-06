@@ -20,7 +20,8 @@ const MODE_BUTTONS: ReadonlyArray<{ mode: PanelMode; label: string; icon: ReactN
 
 const FRAME: Record<PanelMode, string> = {
   popup: "bottom-[76px] right-5 max-h-[calc(100vh-100px)] w-[400px] max-w-[calc(100vw-24px)] rounded-card border",
-  sheet: "bottom-0 left-1/2 max-h-[78vh] w-[760px] max-w-full -translate-x-1/2 rounded-t-card border border-b-0",
+  // Centred with auto margins, not a translate: Tailwind's transform utilities need base variables this build does not load.
+  sheet: "bottom-0 left-0 right-0 mx-auto max-h-[78vh] w-[760px] max-w-full rounded-t-card border border-b-0",
   side: "right-0 top-0 h-screen w-[400px] max-w-full border-l",
 };
 

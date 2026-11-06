@@ -14,37 +14,33 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.px-root *,
-.px-root *::before,
-.px-root *::after {
+/*
+ * These resets stand in for Tailwind's preflight, which is off. They are wrapped in :where() so they carry zero
+ * specificity: a plain `.px-root button` rule would outrank utility classes such as `.bg-amber`, `.text-amber-ink`
+ * or `.border`, and every button would lose its colour and every field its border.
+ */
+:where(.px-root) *,
+:where(.px-root) *::before,
+:where(.px-root) *::after {
   box-sizing: border-box;
-}
-
-.px-root button,
-.px-root input,
-.px-root select,
-.px-root textarea {
-  font: inherit;
-  color: inherit;
-  margin: 0;
-}
-
-.px-root a {
-  color: inherit;
-}
-
-/* Tailwind preflight is off, so borders need a style or the browser draws its grey default on every button. */
-.px-root *,
-.px-root *::before,
-.px-root *::after {
   border-width: 0;
   border-style: solid;
   border-color: var(--px-rule);
 }
 
-.px-root button {
+:where(.px-root) :is(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+}
+
+:where(.px-root) button {
   background: transparent;
   cursor: pointer;
+}
+
+:where(.px-root) a {
+  color: inherit;
 }
 
 @media (prefers-reduced-motion: reduce) {
