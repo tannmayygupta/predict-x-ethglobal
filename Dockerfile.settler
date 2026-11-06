@@ -1,0 +1,59 @@
+# Settlement worker: polls Base Sepolia for pools past their close time and runs the Chainlink CRE workflow
+# (`cre workflow simulate --broadcast`) to deliver the result on-chain. No web server, no inbound traffic.
+# This is a CRE SIMULATION with real on-chain delivery; it is labelled that way everywhere it is shown.
+FROM oven/bun:1.3.5 AS bun
+
+FROM node:22-bookworm-slim
+
+# pipefail so a failed download in `curl | bash` fails the build instead of silently installing nothing
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+
+# curl, gpg and tar are what Chainlink's installer needs (it verifies a signature on the binary with gpg)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg tar \
+    && rm -rf /var/lib/apt/lists/*
+
+# Bun compiles the workflow; the version matches the one the workflow was developed with
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
+
+# The cre CLI, pinned to the version the workflow was simulated with (v1.39.0). The installer picks the glibc build
+# that matches this image and verifies the release signature. The binary lands in $CRE_INSTALL/bin/cre.
+RUN curl -fsSL https://app.chain.link/cre/install.sh | CRE_INSTALL=/opt/cre bash -s -- v1.39.0 \
+    && ln -s /opt/cre/bin/cre /usr/local/bin/cre \
+    && cre version
+
+RUN corepack enable
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/backend/package.json apps/backend/package.json
+COPY apps/dashboard/package.json apps/dashboard/package.json
+COPY apps/extension/package.json apps/extension/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY packages/ui/package.json packages/ui/package.json
+# The loop script resolves viem through apps/backend/node_modules (see scripts/tsconfig.json), so the backend's
+# dependencies are installed; nothing else from the workspace is needed.
+RUN pnpm install --frozen-lockfile --filter @predictx/backend...
+
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY scripts scripts
+COPY cre cre
+# The workflow lives outside the pnpm workspace and has its own lockfile
+RUN cd cre/resolve-pools && bun install --frozen-lockfile
+
+# The cre CLI and Bun write caches and build output (home directory, the workflow folder), so run as a user that owns them
+RUN chown -R node:node /app/cre
+USER node
+ENV HOME=/home/node \
+    NODE_ENV=production
+
+WORKDIR /app/apps/backend
+
+# Secrets arrive as environment variables at run time: CRE_API_KEY (non-interactive CRE login), CRE_ETH_PRIVATE_KEY
+# (a throwaway Base Sepolia wallet that pays gas), CRE_COINGECKO_API_KEY. POOL_RPC_URL is optional.
+CMD ["node_modules/.bin/tsx", "--tsconfig", "../../scripts/tsconfig.json", "../../scripts/resolver-loop.ts"]

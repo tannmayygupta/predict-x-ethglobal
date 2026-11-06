@@ -1,0 +1,38 @@
+# Keeps secrets and bulk out of every image build context. Rebuilt inside the image instead.
+.git
+.github
+.vercel
+
+# Secrets: never part of a build context
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies are installed fresh inside the image
+**/node_modules
+
+# Build output and local state
+**/dist
+**/coverage
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
+
+# Not needed by the API or the settler
+contracts/lib
+contracts/out
+contracts/cache
+contracts/broadcast
+docs
+
+# These workspaces are not built into the API or settler images, but their package.json files ARE copied so the
+# pnpm lockfile matches the workspace. Ignore everything else inside them.
+apps/dashboard/*
+!apps/dashboard/package.json
+apps/extension/*
+!apps/extension/package.json
+packages/ui/*
+!packages/ui/package.json

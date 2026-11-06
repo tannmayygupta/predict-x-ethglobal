@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "web": {
+      "root": "apps/dashboard",
+      "framework": "vite",
+      "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @predictx/dashboard...",
+      "buildCommand": "cd ../.. && pnpm --filter @predictx/dashboard build",
+      "outputDirectory": "dist",
+      "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+    },
+    "api": {
+      "root": ".",
+      "runtime": "container",
+      "entrypoint": "Dockerfile.api"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": { "service": "api" } },
+    { "source": "/(.*)", "destination": { "service": "web" } }
+  ],
+  "daemons": {
+    "settler": {
+      "root": ".",
+      "entrypoint": "Dockerfile.settler",
+      "instances": { "iad1": 1 },
+      "resources": { "requests": { "memory": "2Gi" } }
+    }
+  }
+}
