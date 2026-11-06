@@ -62,7 +62,7 @@ export function unwrapTags(root: ParentNode): void {
   for (const span of root.querySelectorAll(`[${TAG_ATTR}]`)) span.replaceWith(span.ownerDocument.createTextNode(span.textContent ?? ""));
 }
 
-function textBlocksIn(node: Node): Element[] {
+export function textBlocksIn(node: Node): Element[] {
   const element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
   if (!element) return [];
   const enclosing = element.closest(X.tweetText);

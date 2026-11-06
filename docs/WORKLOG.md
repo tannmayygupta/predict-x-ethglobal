@@ -119,3 +119,6 @@ apps/dashboard (Vite + React Router + Tailwind): `/` latest 20 pools refreshed e
 Verification: `tsc` and `vite build` clean, no key names in dist. 14 render tests of PoolSlip assert the exact deck copy for open, empty, awaiting, resolved winner/loser/claimed, void, and the wallet gates (no MetaMask, not connected, wrong network). Not verified: a visual check in a browser. The Chrome tool in this session runs on a different network than the dev machine and could not reach localhost, so the human must look at http://localhost:5173.
 Dev servers listen on both IPv4 and IPv6 (`host: "::"`).
 
+## M7 bet box under posts  (A, 2026-11-06)
+observePostBoxes keeps one shadow-root box under every post whose text has PX#<id> or /pool/<id> (digits only, absurd ids refused), re-creates a box x.com removed, removes boxes for posts that left. The slip is the same PoolSlip as the dashboard. Isolation: key events inside our UI stop at our host (x.com shortcuts j/k/n// stay quiet), clicks inside a box stop before the post's open-this-post handler, Escape is handed to us. Slip notch colour is read from the post's painted background. Tests: 83 in the extension (observer, mount isolation, no page styles added).
+

@@ -52,7 +52,7 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked on a human input · ⬜ not 
 | T-A08 | Insight tab | 🟡 | 80 | | Insight built; real tips need an OpenAI key |
 | T-A09 | Create pool panel and launcher | 🟡 | 80 | | Form + preview + createPool built; args verified against the live contract by simulation; a funded wallet run is pending |
 | T-A10 | Post pool to X | 🟡 | 80 | | Post step built (x.com/intent/post) |
-| T-A14 | Bet box under tweets | ⬜ | 0 | | T-A12, T-A04 |
+| T-A14 | Bet box under tweets | 🟡 | 80 | | Box observer + shared slip built and tested; needs a post on x.com to check |
 
 ## Dashboard website (role A)
 

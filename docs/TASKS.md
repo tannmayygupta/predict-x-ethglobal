@@ -23,7 +23,7 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 | T-A11 | Dashboard scaffold, routing, wallet | A | T-A02, T-A03 | doing |
 | T-A12 | Pool page: bet, claim, refund (D2) | A | T-A11, T-002 | doing |
 | T-A13 | Dashboard home and faucet (D1, D3) | A | T-A12 | doing |
-| T-A14 | Bet box on tweets (A6) | A | T-A12, T-A04 | todo |
+| T-A14 | Bet box on tweets (A6) | A | T-A12, T-A04 | doing |
 | T-A15 | States, copy and polish pass | A | T-A14, T-A08 | todo |
 | T-A16 | Switch to real backend, run merge checklist | A | T-B10, T-A15 | todo |
 | T-B01 | Backend scaffold | B | T-001 | done |
@@ -128,7 +128,7 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 - done when: home lists pools with empty, loading and error states; faucet mints test USDC.
 
 ### T-A14 Bet box on tweets (A6)
-- owner: A | status: todo | deps: T-A12, T-A04 | reqs: FR-P-04
+- owner: A | status: doing | deps: T-A12, T-A04 | reqs: FR-P-04
 - do: detect `PX#<id>` or `/pool/<id>` in tweet text with `extractPoolId`; inject the Slip under the tweet; reuse the D2 components.
 - done when: the box appears only on matching tweets; staking works from the box.
 

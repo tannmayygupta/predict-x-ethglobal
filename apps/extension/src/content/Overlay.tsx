@@ -3,6 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { HoverStore } from "../x/hoverStore";
 import { TokenCard } from "./cards/TokenCard";
 import { CreatePanel } from "./create/CreatePanel";
+import { ESCAPE_EVENT } from "./events";
 import { tokenStore } from "./tokens";
 
 /** Launcher pill (bottom right) that opens the Create panel, plus the hover card. */
@@ -20,8 +21,17 @@ export function Overlay({ hover }: { hover: HoverStore }) {
       hover.close();
       closePanel();
     };
+    const onEscape = (): void => {
+      hover.close();
+      closePanel();
+    };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    // Escape pressed inside our own inputs is stopped at our host (so x.com shortcuts stay quiet) and arrives here.
+    window.addEventListener(ESCAPE_EVENT, onEscape);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener(ESCAPE_EVENT, onEscape);
+    };
   }, [hover]);
 
   return (
