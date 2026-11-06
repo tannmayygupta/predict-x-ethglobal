@@ -93,8 +93,8 @@ Pool writes (`createPool`, `stake`, `claim`, `refund`, and USDC `approve`, `mint
 **`GET /pools/:id`**
 ```json
 { "id": 12, "chainId": 84532, "contract": "0x...",
-  "question": "Will $PEPE be above $0.0000120 at 14:30 UTC on 28 Oct?",
-  "symbol": "PEPE", "coingeckoId": "pepe", "direction": "above", "strikeUsd": "0.0000120",
+  "question": "Will $PEPE be above $0.000012 at 22:00 UTC on 27 Oct?",
+  "symbol": "PEPE", "coingeckoId": "pepe", "direction": "above", "strikeUsd": "0.000012",
   "resolveTime": 1761602400, "createdAt": 1761588000,
   "yesTotal": "60000000", "noTotal": "40000000",
   "status": "open", "outcome": null, "resolvedPriceUsd": null, "feeBps": 200,

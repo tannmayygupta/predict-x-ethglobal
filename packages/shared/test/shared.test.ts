@@ -17,6 +17,12 @@ describe("fixtures match schemas", () => {
     Position.parse(fixtures.positionWinner);
     TokensResponse.parse(tokensJson);
   });
+  it("pool fixtures carry the exact question the helpers would build (B-005)", () => {
+    for (const p of [fixtures.poolOpen, fixtures.poolResolved]) {
+      expect(fromE18(toStrikeE18(p.strikeUsd))).toBe(p.strikeUsd);
+      expect(buildQuestion({ symbol: p.symbol, direction: p.direction, strikeUsd: p.strikeUsd, resolveTime: p.resolveTime })).toBe(p.question);
+    }
+  });
   it("limit quote needs a limit price", () => {
     const base = { walletAddress: "0x1111111111111111111111111111111111111111", symbol: "ETH", side: "buy", amount: "2" };
     expect(FlashQuoteRequest.safeParse({ ...base, orderType: "limit" }).success).toBe(false);

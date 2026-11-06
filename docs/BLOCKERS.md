@@ -43,7 +43,7 @@ Needs from human: the keys and the two hosting targets. Also decide `x.com/inten
 Safe to continue with: all mock-mode tasks; CoinGecko free tier works without a key for development.
 Status: open
 
-## B-005 CONTRACT CHANGE: shared pool fixtures disagree with the helpers  (B, T-B07, 2026-10-29)
+## B-005 CONTRACT CHANGE: shared pool fixtures disagree with the helpers  (B, T-B07, 2026-10-29)  RESOLVED 2026-11-06: approved; fixture strike is "0.000012" and the question is rebuilt for resolveTime 1761602400, with a shared test asserting buildQuestion(fixture) === fixture.question
 Blocked on: packages/shared/src/fixtures.ts poolOpen/poolResolved use strikeUsd "0.0000120" and question "...at 14:30 UTC on 28 Oct?" while fromE18 canonicalises the strike to "0.000012" and resolveTime 1761602400 is 22:00 UTC on 27 Oct, so buildQuestion(fixture) !== fixture.question (FR-P-01).
 Tried: backend maps strikeUsd with fromE18 and builds its own consistent seeds; the frontend mock server serves the fixtures as-is, so the two sides will disagree on the preview.
 Needs from human: approve one commit that fixes the fixture (strike "0.000012", question rebuilt with buildQuestion for resolveTime 1761602400) and its test, per AGENT.md section 6. The frontend must canonicalise the strike (toStrikeE18 then fromE18) before calling buildQuestion.
