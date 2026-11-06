@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "typeRoots": ["../apps/backend/node_modules/@types"],
+    "baseUrl": ".",
+    "paths": {
+      "viem": ["../apps/backend/node_modules/viem"],
+      "viem/*": ["../apps/backend/node_modules/viem/*"],
+      "zod": ["../apps/backend/node_modules/zod"],
+      "@predictx/shared": ["../packages/shared/src/index.ts"],
+      "@predictx/shared/*": ["../packages/shared/*"]
+    }
+  },
+  "include": ["*.ts"]
+}
