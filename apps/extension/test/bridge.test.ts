@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BridgeProvider, type BridgeHost } from "../src/bridge/BridgeProvider";
+import { BridgeProvider, PROBE_TIMEOUT_MS, type BridgeHost } from "../src/bridge/BridgeProvider";
 import { CHANNEL, ERR_NO_WALLET, ERR_UNSUPPORTED_METHOD, PROBE_METHOD, type BridgeEvent, type BridgeRequest, type BridgeResponse } from "../src/bridge/protocol";
 import { createBridgeHandler } from "../src/inpage/handler";
 
@@ -83,6 +83,14 @@ describe("BridgeProvider (content script side)", () => {
     expect(posted[0]?.method).toBe(PROBE_METHOD);
     deliver(response(posted[0]?.id ?? "", { result: true }));
     await expect(answer).resolves.toBe(true);
+  });
+
+  it("available() gives up after 2 s when the page script is silent, instead of hanging for minutes", async () => {
+    const { host } = fakeHost();
+    const bridge = new BridgeProvider(host);
+    const answer = bridge.available();
+    await vi.advanceTimersByTimeAsync(PROBE_TIMEOUT_MS + 1);
+    await expect(answer).resolves.toBe(false);
   });
 
   it("gives up on a page script that never answers", async () => {

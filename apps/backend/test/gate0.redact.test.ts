@@ -38,6 +38,12 @@ describe("Gate 0 report redact()", () => {
     expect(redact(value, API_KEY)).toBe(value);
   });
 
+  it("keeps ERC-20 approve calldata (136 hex) so recorded fixtures stay valid, but still redacts other 136-char blobs", () => {
+    const approve = `0x095ea7b3${"00".repeat(64)}`;
+    expect(redact({ approveTx: { data: approve } }, API_KEY)).toEqual({ approveTx: { data: approve } });
+    expect(redact(`0xdeadbeef${"00".repeat(64)}`, API_KEY)).toBe(REDACTED);
+  });
+
   it("redacts any value under a key that names a signature, and keeps typed data readable", () => {
     const typed = '{"primaryType":"Order","message":{"nonce":"1"}}';
     expect(redact({ userSignature: "0xaaaa", evmOrderTypedData: typed }, API_KEY)).toEqual({

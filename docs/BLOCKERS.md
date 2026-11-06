@@ -15,6 +15,13 @@ Status: open | resolved (<answer>)
 
 ## Open
 
+## B-006 Chainlink CRE login and funded test keys  (B, M1/M9, 2026-11-06)
+Blocked on: the `cre` CLI (v1.39.0, installed and signature-verified) refuses every command, including a dry-run simulation, with "not logged in and no CRE_API_KEY set". Login is interactive (browser) and belongs to the human's Chainlink account. Also empty in `.env`: `CRE_ETH_PRIVATE_KEY`, `TEST_WALLET_A_PRIVATE_KEY`, `TEST_WALLET_B_PRIVATE_KEY` (Base Sepolia test ETH), and the OpenAI and Flash keys.
+Tried: `cre whoami`, `cre workflow simulate ... ` (dry run), `scripts/resolver-loop.ts --once --force` (finds and runs cre.exe, reports the login error).
+Needs from human: run `cre login` (in Claude Code type `! cre login`) or create a `CRE_API_KEY`; fill the keys listed in docs/LOCAL_TEST.md section 0.
+Safe to continue with: everything that does not settle or spend: unit and render tests, builds, `ui test:live`.
+Status: open
+
 ## B-001 Foundry and funded Base Sepolia deployer  (B, T-002, 2026-10-29)  RESOLVED 2026-10-31
 Blocked on: (Foundry 1.8.7 installed 2026-10-30, resolved) `DEPLOYER_PRIVATE_KEY` with Base Sepolia ETH missing (`.env.example` has no such variable yet; contract addresses are 0x0).
 Tried: `which forge` -> not found; checked .env.example and contracts/ (only .gitkeep).

@@ -10,26 +10,36 @@ export interface PollHandlers<T> {
 }
 
 /**
- * Reads immediately, then again `intervalMs` after each read finishes, so reads never overlap and a slow
- * server is not hammered. A result that arrives after stop() is dropped.
+ * Reads immediately, then again `intervalMs` after each read finishes, so reads never overlap and a slow server is
+ * not hammered. A result that arrives after stop() is dropped.
+ *
+ * refresh() is never lost: if a read is already in flight, that read started before the change that prompted the
+ * refresh, so its answer is stale. It is discarded and a new read runs straight after it finishes.
  */
 export function startPolling<T>(read: () => Promise<T>, intervalMs: number, handlers: PollHandlers<T>): Poller {
   let stopped = false;
   let running = false;
+  let rerun = false;
+  let epoch = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const tick = async (): Promise<void> => {
     if (stopped || running) return;
     running = true;
+    rerun = false;
     clearTimeout(timer);
+    const startedIn = epoch;
     try {
       const value = await read();
-      if (!stopped) handlers.onData(value);
+      if (!stopped && startedIn === epoch) handlers.onData(value);
     } catch (err) {
-      if (!stopped) handlers.onError(err);
+      if (!stopped && startedIn === epoch) handlers.onError(err);
     } finally {
       running = false;
-      if (!stopped) timer = setTimeout(() => void tick(), intervalMs);
+      if (!stopped) {
+        if (rerun) void tick();
+        else timer = setTimeout(() => void tick(), intervalMs);
+      }
     }
   };
 
@@ -40,7 +50,10 @@ export function startPolling<T>(read: () => Promise<T>, intervalMs: number, hand
       clearTimeout(timer);
     },
     refresh() {
-      void tick();
+      if (stopped) return;
+      epoch += 1;
+      if (running) rerun = true;
+      else void tick();
     },
   };
 }

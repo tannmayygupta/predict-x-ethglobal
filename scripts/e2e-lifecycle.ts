@@ -15,7 +15,7 @@ import { computePayout, formatUsdc, fromE18, toStrikeE18, toUsdcUnits } from "@p
 import {
   accountAddress, chainNow, claim, createApiClient, createChainClients, createPool, createPoolWalletClient, mintTestUsdc,
   prepareCreate, readRawPool, readUsdcBalance, refund, stake, type ChainClients, type Session, type UiErrorCode,
-} from "@predictx/ui";
+} from "@predictx/ui/core";
 import { http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { loadRepoEnv, readKey, say, sleep } from "./common";

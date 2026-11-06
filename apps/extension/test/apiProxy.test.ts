@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { GET_CACHE_MS, createApiProxy } from "../src/background/apiProxy";
+import { GET_CACHE_MS, MAX_CACHED_URLS, createApiProxy } from "../src/background/apiProxy";
 
 const BASE = "http://localhost:8787/api/v1";
 
@@ -80,6 +80,39 @@ describe("api proxy gateway", () => {
     expect(fetchImpl).toHaveBeenCalledWith(`${BASE}/insight`, {
       method: "POST", headers: { "content-type": "application/json" }, body: '{"symbol":"ETH"}',
     });
+  });
+
+  it.each([
+    [`${BASE}/../admin/secret`],
+    [`${BASE}/%2e%2e/admin`],
+    ["http://localhost:8787/api/v1/../../etc/passwd"],
+    ["http://user:pw@localhost:8787/api/v1/pools"],
+    ["http://localhost:8787@evil.example/api/v1/pools"],
+    ["http://localhost:8788/api/v1/pools"],
+    ["not a url"],
+  ])("refuses %j after normalising the URL (no path traversal out of the API base)", async (url) => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const { proxy: p } = proxy(fetchImpl);
+    expect(await p.handle({ method: "GET", url })).toMatchObject({ ok: false });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("requests the normalised URL, not the raw string", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => reply(200, {}));
+    const { proxy: p } = proxy(fetchImpl);
+    await p.handle({ method: "GET", url: `${BASE}/pools/./7?x=1` });
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe(`${BASE}/pools/7?x=1`);
+  });
+
+  it("keeps the GET cache bounded: the oldest URL is evicted past the cap", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => reply(200, {}));
+    const { proxy: p } = proxy(fetchImpl);
+    for (let i = 0; i < MAX_CACHED_URLS + 5; i++) await p.handle({ method: "GET", url: `${BASE}/pools/${i}` });
+    const calls = fetchImpl.mock.calls.length;
+    await p.handle({ method: "GET", url: `${BASE}/pools/${MAX_CACHED_URLS + 4}` }); // newest: still cached
+    expect(fetchImpl.mock.calls.length).toBe(calls);
+    await p.handle({ method: "GET", url: `${BASE}/pools/0` }); // oldest: evicted, asked again
+    expect(fetchImpl.mock.calls.length).toBe(calls + 1);
   });
 
   it("reports a network failure without throwing", async () => {

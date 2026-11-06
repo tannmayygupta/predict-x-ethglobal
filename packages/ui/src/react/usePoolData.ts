@@ -31,10 +31,19 @@ export function usePoolData(opts: { api: ApiClient; chain: ChainClients; poolId:
   const [loading, setLoading] = useState(true);
   const chainUntil = useRef(0);
   const poller = useRef<Poller | null>(null);
+  const shownPool = useRef<number | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setSnapshot(null);
+    if (shownPool.current !== poolId) {
+      // A different pool: start from a blank slate.
+      shownPool.current = poolId;
+      setLoading(true);
+      setSnapshot(null);
+    } else {
+      // Same pool, different wallet (connected, switched account): keep the pool on screen and the user's typing
+      // intact, but drop the position, which belongs to the previous account.
+      setSnapshot((prev) => (prev ? { pool: prev.pool, position: null } : prev));
+    }
     const read = async (): Promise<Snapshot> => {
       if (Date.now() < chainUntil.current) {
         const [pool, position] = await Promise.all([readPoolFresh(chain, poolId), address ? readPositionFresh(chain, poolId, address) : null]);

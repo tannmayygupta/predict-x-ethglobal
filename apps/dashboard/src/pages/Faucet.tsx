@@ -34,7 +34,8 @@ export function Faucet() {
   const mint = (): void => {
     setBusy(true);
     setError(null);
-    mintTestUsdc(wallet.session(), MINT_AMOUNT)
+    Promise.resolve()
+      .then(() => mintTestUsdc(wallet.session(), MINT_AMOUNT))
       .then(() => {
         toast(`Minted ${MINT_AMOUNT} USDC`);
         reload.current();

@@ -81,7 +81,8 @@ async function main(): Promise<void> {
 
   for (const seed of POOLS) {
     const block = await publicClient.getBlock({ blockTag: "latest" });
-    const resolveTime = Number(block.timestamp) + seed.durationSeconds + CREATE_BUFFER_SECONDS;
+    // Rounded up to a whole minute, like the Create panel: the question prints only HH:MM, so that time must be the real one.
+    const resolveTime = Math.ceil((Number(block.timestamp) + seed.durationSeconds + CREATE_BUFFER_SECONDS) / 60) * 60;
     const strikeUsd = fromE18(toStrikeE18(seed.strike)); // canonical form, so the stored question matches the API
     const question = buildQuestion({ symbol: seed.symbol, direction: seed.direction, strikeUsd, resolveTime });
     const receipt = await send(0, {

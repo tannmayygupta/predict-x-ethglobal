@@ -5,6 +5,8 @@ import {
 
 /** A wallet prompt can sit open while the user decides; this only guards against a page script that never answers. */
 const REQUEST_TIMEOUT_MS = 10 * 60_000;
+/** The probe asks "is MetaMask there?" and needs no human, so a silent page script must not hold it for minutes. */
+export const PROBE_TIMEOUT_MS = 2_000;
 
 type Listener = (...args: unknown[]) => void;
 
@@ -33,19 +35,31 @@ export class BridgeProvider implements Eip1193Provider {
     host.addEventListener("message", this.onMessage);
   }
 
-  /** True when the page script found a MetaMask provider. */
+  /**
+   * True when the page script found a MetaMask provider. If the page script never answers (it failed to load, or
+   * the extension was reloaded under an open tab) this resolves false after 2 s instead of hanging, so the screen
+   * can say "Install MetaMask" and a later Connect press probes again.
+   */
   async available(): Promise<boolean> {
-    return (await this.request({ method: PROBE_METHOD })) === true;
+    try {
+      return (await this.send(PROBE_METHOD, undefined, PROBE_TIMEOUT_MS)) === true;
+    } catch {
+      return false;
+    }
   }
 
   request({ method, params }: { method: string; params?: unknown }): Promise<unknown> {
+    return this.send(method, params, REQUEST_TIMEOUT_MS);
+  }
+
+  private send(method: string, params: unknown, timeoutMs: number): Promise<unknown> {
     const id = crypto.randomUUID();
     const message: BridgeRequest = { channel: CHANNEL, kind: "request", id, method, ...(params === undefined ? {} : { params }) };
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(Object.assign(new Error("The wallet did not answer."), { code: -32603 }));
-      }, REQUEST_TIMEOUT_MS);
+      }, timeoutMs);
       this.pending.set(id, { resolve, reject, timer });
       this.host.postMessage(message, this.host.origin);
     });

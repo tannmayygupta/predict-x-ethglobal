@@ -1,5 +1,7 @@
 import { CHAINS } from "@predictx/shared";
 import { useEffect, useState } from "react";
+import type { UiError } from "../errors";
+import { toUiError } from "../errors";
 import { COPY } from "../copy";
 import { useWallet } from "../react/useExternal";
 import type { WalletController } from "../wallet";
@@ -50,6 +52,28 @@ export function NetworkPill({ chainId, expected }: { chainId: number | null; exp
   );
 }
 
+/** Asks the wallet for Base Sepolia and says why when it cannot (rejected, a request already pending, locked wallet). */
+export function SwitchNetworkButton({ controller, size = "md" }: { controller: WalletController; size?: "sm" | "md" }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<UiError | null>(null);
+  const run = (): void => {
+    setBusy(true);
+    setError(null);
+    controller
+      .switchToPoolChain()
+      .catch((err: unknown) => setError(toUiError(err)))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <div className="flex flex-col gap-2">
+      <Button size={size} loading={busy} onClick={run}>
+        {COPY.switch_base_sepolia}
+      </Button>
+      {error ? <Notice kind={error.code === "USER_REJECTED" ? "info" : "error"}>{error.message}</Notice> : null}
+    </div>
+  );
+}
+
 /** Connect, show the account and network, or offer the switch. Every action that needs a wallet shows this. */
 export function WalletBar({
   controller,
@@ -80,11 +104,7 @@ export function WalletBar({
         {wallet.address ? <AddressChip address={wallet.address} /> : null}
         <NetworkPill chainId={wallet.chainId} expected={needsChain ? expectedChainId : (wallet.chainId ?? expectedChainId)} />
       </div>
-      {wrong ? (
-        <Button size="sm" onClick={() => void controller.switchToPoolChain().catch(() => undefined)}>
-          {COPY.switch_base_sepolia}
-        </Button>
-      ) : null}
+      {wrong ? <SwitchNetworkButton controller={controller} size="sm" /> : null}
     </div>
   );
 }

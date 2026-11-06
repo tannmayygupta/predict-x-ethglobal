@@ -1,7 +1,7 @@
-import { DURATION_PRESETS_SECONDS, type Pool, type Token } from "@predictx/shared";
+import { DURATION_PRESETS_SECONDS, type Token } from "@predictx/shared";
 import {
-  Button, COPY, Notice, Segmented, TextField, UiError, WalletBar, chainNow, createPool, formatUsdPrice, prepareCreate, readPoolFresh,
-  toUiError, useNow, useWallet, type PreparedPool,
+  Button, COPY, Notice, Segmented, TextField, UiError, WalletBar, chainNow, createPool, formatUsdPrice, postablePool, prepareCreate,
+  toUiError, useNow, useWallet, type PostablePool, type PreparedPool,
 } from "@predictx/ui";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
@@ -9,7 +9,7 @@ import { chain, wallet } from "../wallet";
 import { PostStep } from "./PostStep";
 
 type Direction = "above" | "below";
-type Phase = { kind: "form" } | { kind: "sending" } | { kind: "error"; error: UiError } | { kind: "done"; pool: Pool };
+type Phase = { kind: "form" } | { kind: "sending" } | { kind: "error"; error: UiError } | { kind: "done"; pool: PostablePool };
 
 const DURATION_LABELS: Record<number, string> = { 180: "3 min", 3600: "1 hour", 14400: "4 hours", 86400: "24 hours" };
 const DURATION_OPTIONS = DURATION_PRESETS_SECONDS.map((s) => ({ value: String(s), label: DURATION_LABELS[s] ?? `${s}s` }));
@@ -57,8 +57,11 @@ export function CreatePanel({ tokens, initialSymbol, onClose }: { tokens: Token[
     const toSend = prepared.value;
     if (!toSend) return;
     setPhase({ kind: "sending" });
-    createPool(wallet.session(), toSend)
-      .then(({ poolId }) => readPoolFresh(chain, poolId))
+    // session() is evaluated inside the chain so a wallet that vanished becomes an error, not a stuck "Creating...".
+    // postablePool cannot fail, so a pool that exists onchain is never shown as a failed creation.
+    Promise.resolve()
+      .then(() => createPool(wallet.session(), toSend))
+      .then(({ poolId }) => postablePool(chain, poolId, toSend))
       .then((pool) => setPhase({ kind: "done", pool }))
       .catch((err: unknown) => setPhase({ kind: "error", error: toUiError(err) }));
   };

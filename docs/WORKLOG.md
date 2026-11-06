@@ -122,3 +122,19 @@ Dev servers listen on both IPv4 and IPv6 (`host: "::"`).
 ## M7 bet box under posts  (A, 2026-11-06)
 observePostBoxes keeps one shadow-root box under every post whose text has PX#<id> or /pool/<id> (digits only, absurd ids refused), re-creates a box x.com removed, removes boxes for posts that left. The slip is the same PoolSlip as the dashboard. Isolation: key events inside our UI stop at our host (x.com shortcuts j/k/n// stay quiet), clicks inside a box stop before the post's open-this-post handler, Escape is handed to us. Slip notch colour is read from the post's painted background. Tests: 83 in the extension (observer, mount isolation, no page styles added).
 
+## Code review, M8 and M9 (partial)  (A+B, 2026-11-06)
+Independent review (9 findings, all confirmed against the code) and fixes:
+1. usePoolData reset the pool whenever the wallet changed, wiping a typed amount: now resets only when the pool changes; on an account switch the pool stays and the old account's position is dropped.
+2. A pool created onchain could be shown as a failed creation if the read-back failed (inviting a duplicate): postablePool retries and falls back to the known question and link, so it cannot fail.
+3. poll.refresh() was dropped while a read was in flight, so a bet could look unconfirmed for 10 s: the in-flight (stale) answer is now discarded and a fresh read runs straight after.
+4. A wallet vanishing between render and click left a spinner forever (session() threw outside the promise chain): all five call sites now evaluate it inside the chain.
+5. A late quote answer could overwrite the screen for newer inputs: each request is numbered and editing a field invalidates older ones.
+6. Network-switch failures were swallowed (RULES 3.6): SwitchNetworkButton shows the reason.
+7. seed-pools did not minute-align the close time like the UI: fixed (one line). Not done: rewriting seed-pools onto the shared actions; the script works and is unrunnable without keys, so a refactor would be untested.
+8. The Gate 0 redaction turned ERC-20 approve calldata into "[redacted]" and would have corrupted recorded fixtures: that exact shape is now kept.
+9. Wallet probe could hang 10 minutes and the gateway's prefix check allowed dot-segments ("/api/v1/../x"): probe times out in 2 s; the gateway validates the parsed URL, rejects credentials and dot-segments, and its GET cache is capped at 200.
+Also: scripts import a headless @predictx/ui/core entry (no React). scripts/check-bundles.ts scans shipped bundles for key names, key shapes and the actual secret values (verified to fail on an injected leak).
+Chainlink CLI v1.39.0 installed (download resumed after a stall; Authenticode signature Valid, SmartContract Inc). `cre` needs the human to log in (B-006). The workflow's own bun tests (37) and Foundry (49) pass on this machine.
+Merge checklist (testnet-adapted), run so far: endpoint contract through the typed client PASS (8 live tests); CORS allows localhost:5173 and x.com and no other origin PASS; rate limit returns 429 PASS; no keys in either bundle PASS. Open: everything that needs funded wallets, CRE login or a browser (e2e-lifecycle yes/no/void, extension load on x.com, visual checklist).
+Tests now: shared 8, ui 87 (+14 live), backend 478 (+1 skipped on Windows), extension 93, CRE workflow 37, Foundry 49.
+

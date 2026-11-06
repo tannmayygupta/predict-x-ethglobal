@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { fixtures, type Pool, type Position } from "@predictx/shared";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { PoolSlip, type PoolSlipProps } from "../src/components/PoolSlip";
 import { createChainClients } from "../src/chain";
@@ -14,7 +14,7 @@ const chain = createChainClients();
 const NOW = 1_800_000_000;
 const HOLDER = "0x1111111111111111111111111111111111111111";
 
-function controller(state: Partial<WalletState> = {}): WalletController {
+function controller(state: Partial<WalletState> = {}, over: Partial<WalletController> = {}): WalletController {
   const full: WalletState = { status: "connected", address: HOLDER, chainId: chain.chainId, error: null, ...state };
   return {
     getState: () => full,
@@ -24,6 +24,7 @@ function controller(state: Partial<WalletState> = {}): WalletController {
     switchToPoolChain: async () => undefined,
     session: () => { throw new Error("not used"); },
     dispose: () => undefined,
+    ...over,
   };
 }
 
@@ -144,5 +145,35 @@ describe("PoolSlip wallet gating", () => {
     });
     expect(screen.queryByRole("button", { name: /Claim 49/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Switch to Base Sepolia" })).toBeTruthy();
+  });
+});
+
+describe("PoolSlip failure handling (code-review fixes)", () => {
+  it("a wallet that vanishes between render and click shows an error and frees the buttons (no stuck spinner)", async () => {
+    const { UiError } = await import("../src/errors");
+    const gone = controller({}, { session: () => { throw new UiError("NO_WALLET", "Install MetaMask to continue."); } });
+    slip({ pool: pool(), controller: gone });
+    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Bet YES" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Install MetaMask to continue."));
+    const yes = screen.getByRole("button", { name: "Bet YES" }) as HTMLButtonElement;
+    expect(yes.disabled).toBe(false);
+    expect((screen.getByLabelText("Amount") as HTMLInputElement).disabled).toBe(false);
+  });
+
+  it("a failed network switch says why instead of doing nothing", async () => {
+    const { UiError } = await import("../src/errors");
+    const stuck = controller({ chainId: 1 }, { switchToPoolChain: async () => { throw new UiError("CHAIN_ERROR", "Transaction failed: request already pending"); } });
+    slip({ pool: pool(), controller: stuck });
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Base Sepolia" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("request already pending"));
+  });
+
+  it("a wallet rejection while switching is shown calmly as information", async () => {
+    const { UiError } = await import("../src/errors");
+    const declined = controller({ chainId: 1 }, { switchToPoolChain: async () => { throw new UiError("USER_REJECTED", "You rejected the request in your wallet."); } });
+    slip({ pool: pool(), controller: declined });
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Base Sepolia" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("You rejected the request"));
   });
 });

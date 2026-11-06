@@ -8,6 +8,7 @@ import { useNow, useWallet } from "../react/useExternal";
 import { effectiveStatus, formatCountdown, poolSize } from "../view";
 import type { WalletController } from "../wallet";
 import { TextField } from "./forms";
+import { SwitchNetworkButton } from "./wallet";
 import { OddsBar } from "./odds";
 import { Button, Notice } from "./primitives";
 
@@ -70,7 +71,7 @@ function WalletGate({ controller, chain }: { controller: WalletController; chain
     return <Button loading={wallet.status === "connecting"} onClick={() => void controller.connect()}>{COPY.connect_wallet}</Button>;
   }
   if (wallet.chainId !== chain.chainId) {
-    return <Button onClick={() => void controller.switchToPoolChain().catch(() => undefined)}>{COPY.switch_base_sepolia}</Button>;
+    return <SwitchNetworkButton controller={controller} />;
   }
   return null;
 }
@@ -105,7 +106,8 @@ function BetForm({ pool, controller, chain, faucetUrl, onChanged }: PoolSlipProp
     setError(null);
     setBusy("approving");
     const onStep = (step: StakeStep): void => setBusy(step);
-    stake(controller.session(), { poolId: pool.id, isYes, amountUsdc: amount }, onStep)
+    Promise.resolve()
+      .then(() => stake(controller.session(), { poolId: pool.id, isYes, amountUsdc: amount }, onStep))
       .then(() => {
         setAmount("");
         onChanged("bet");
@@ -152,7 +154,8 @@ function ResolvedBlock({ pool, position, controller, chain, faucetUrl, onChanged
   const run = (): void => {
     setError(null);
     setBusy("claiming");
-    claim(controller.session(), pool.id)
+    Promise.resolve()
+      .then(() => claim(controller.session(), pool.id))
       .then(() => onChanged("claim"))
       .catch((err: unknown) => setError(toUiError(err)))
       .finally(() => setBusy(null));
@@ -178,7 +181,8 @@ function VoidBlock({ pool, position, controller, chain, faucetUrl, onChanged }: 
   const run = (): void => {
     setError(null);
     setBusy("refunding");
-    refund(controller.session(), pool.id)
+    Promise.resolve()
+      .then(() => refund(controller.session(), pool.id))
       .then(() => onChanged("refund"))
       .catch((err: unknown) => setError(toUiError(err)))
       .finally(() => setBusy(null));

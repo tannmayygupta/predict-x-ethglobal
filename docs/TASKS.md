@@ -24,8 +24,8 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 | T-A12 | Pool page: bet, claim, refund (D2) | A | T-A11, T-002 | doing |
 | T-A13 | Dashboard home and faucet (D1, D3) | A | T-A12 | doing |
 | T-A14 | Bet box on tweets (A6) | A | T-A12, T-A04 | doing |
-| T-A15 | States, copy and polish pass | A | T-A14, T-A08 | todo |
-| T-A16 | Switch to real backend, run merge checklist | A | T-B10, T-A15 | todo |
+| T-A15 | States, copy and polish pass | A | T-A14, T-A08 | doing |
+| T-A16 | Switch to real backend, run merge checklist | A | T-B10, T-A15 | doing |
 | T-B01 | Backend scaffold | B | T-001 | done |
 | T-B02 | Tokens and market endpoints | B | T-B01 | done |
 | T-B03 | Flash client with mock mode | B | T-B01 | done |
@@ -133,11 +133,11 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 - done when: the box appears only on matching tweets; staking works from the box.
 
 ### T-A15 States, copy and polish pass
-- owner: A | status: todo | deps: T-A14, T-A08 | reqs: NFR-05
+- owner: A | status: doing | deps: T-A14, T-A08 | reqs: NFR-05
 - done when: every screen in `UI_REFERENCE.md` section 8 checklist passes, using `?fail=` mock modes to view all error states.
 
 ### T-A16 Switch to real backend, run merge checklist
-- owner: A | status: todo | deps: T-B10, T-A15 | reqs: FR-B-01
+- owner: A | status: doing | deps: T-B10, T-A15 | reqs: FR-B-01
 - do: set `VITE_API_BASE_URL` to the deployed backend; fix only frontend-side mismatches; if a contract mismatch exists write a `CONTRACT CHANGE` blocker.
 - done when: the merge checklist below passes.
 

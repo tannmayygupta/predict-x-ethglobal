@@ -66,8 +66,8 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked on a human input · ⬜ not 
 
 | ID | Task | Status | % | Assignee | Depends on |
 | --- | --- | --- | --- | --- | --- |
-| T-A15 | Loading, error and empty states, copy polish | ⬜ | 0 | | T-A14, T-A08 |
-| T-A16 | Switch from mock data to the real backend | ⬜ | 0 | | T-A15 (backend on localhost is enough) |
+| T-A15 | Loading, error and empty states, copy polish | 🟡 | 70 | | Every state is built and render-tested; the visual checklist still needs a human look in a browser |
+| T-A16 | Switch from mock data to the real backend | 🟡 | 60 | | Runs on the real local backend already (no mock switch exists); the checklist items that need wallets and CRE login are open (B-006) |
 
 ## Demo and submission (human)
 

@@ -7,7 +7,7 @@ Everything here uses Base Sepolia test funds. Nothing touches Base mainnet: the 
 | Need | How |
 | --- | --- |
 | Node 22, pnpm 9, Foundry, Bun | already used by the repo (`node -v`, `pnpm -v`) |
-| Chainlink `cre` CLI | PowerShell: `irm https://app.chain.link/cre/install.ps1 \| iex`, open a new terminal, then `cre login` and `cre whoami` |
+| Chainlink `cre` CLI | Installed on this machine (v1.39.0, signature checked, in `%LOCALAPPDATA%\Programs\cre`). You still have to sign in: run `cre login` once (it opens your browser), then `cre whoami`. For an unattended loop you can instead put a `CRE_API_KEY` in `.env`. On a new machine: `irm https://app.chain.link/cre/install.ps1 \| iex` |
 | MetaMask in Chrome | with two accounts (A bets YES, B bets NO) |
 | Base Sepolia ETH | free from a faucet, for gas: a little in every wallet below |
 
@@ -18,6 +18,7 @@ Create `.env` at the repo root (it is git-ignored): `cp .env.example .env`, then
 | `OPENAI_API_KEY`, `OPENAI_MODEL=gpt-6-luna` | backend | without them the Insight tab shows the basic fallback note |
 | `FLASH_API_KEY`, `FLASH_MOCK=false` | backend | free key from app.definitive.fi (More, Flash). Keep `FLASH_ORDERS_ENABLED=false` |
 | `CRE_ETH_PRIVATE_KEY` | resolver loop | a throwaway wallet with Base Sepolia ETH; it pays gas to deliver settlements |
+| `CRE_API_KEY` (optional) | resolver loop | alternative to `cre login` for running the loop unattended |
 | `TEST_WALLET_A_PRIVATE_KEY`, `TEST_WALLET_B_PRIVATE_KEY` | `e2e-lifecycle` and live tests | throwaway wallets with Base Sepolia ETH. Never a real wallet |
 
 If you leave `FLASH_API_KEY` empty keep `FLASH_MOCK=true`: the Swap tab then shows a visible MOCK badge on fake quotes.
@@ -42,6 +43,18 @@ pnpm --filter @predictx/extension build
 ```
 
 Chrome: `chrome://extensions`, Developer mode on, **Load unpacked**, pick `apps/extension/dist`. After every rebuild press the extension's reload icon and refresh x.com.
+
+Quick checks before you start:
+
+```sh
+cd apps/backend
+# is the settlement path wired? (runs the real cre CLI once even if nothing is due; expect your login/key to be accepted)
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/resolver-loop.ts --once --force
+# after building the extension and dashboard: no key names or secret values in what ships
+pnpm exec tsx --tsconfig ../../scripts/tsconfig.json ../../scripts/check-bundles.ts
+# every backend endpoint through the typed client the apps use (backend must be running)
+pnpm --filter @predictx/ui test:live
+```
 
 ## 2. Prove the money path first (no browser)
 

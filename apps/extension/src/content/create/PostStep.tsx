@@ -1,12 +1,12 @@
-import { buildTweetText, type Pool } from "@predictx/shared";
-import { Button, COPY, Notice } from "@predictx/ui";
+import { buildTweetText } from "@predictx/shared";
+import { Button, COPY, Notice, type PostablePool } from "@predictx/ui";
 import { useMemo, useState } from "react";
 
 const COMPOSER_URL = "https://x.com/intent/post";
 const COPIED_MS = 1500;
 
 /** A5: the pool exists onchain. The text is exactly buildTweetText; the user presses Post in the X composer. */
-export function PostStep({ pool, onDone }: { pool: Pool; onDone(): void }) {
+export function PostStep({ pool, onDone }: { pool: PostablePool; onDone(): void }) {
   const [copied, setCopied] = useState(false);
   const text = useMemo(() => {
     try {

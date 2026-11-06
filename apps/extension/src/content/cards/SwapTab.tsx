@@ -3,7 +3,7 @@ import {
   AddressChip, Badge, Button, COPY, Notice, Segmented, TextField, WalletBar, formatImpact, isMockQuote, useNow, useWallet,
   type ApiClientError,
 } from "@predictx/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { chain, wallet } from "../wallet";
 
@@ -45,11 +45,19 @@ export function SwapTab({ token, initialLimit }: { token: Token; initialLimit: s
   const [orderType, setOrderType] = useState<OrderType>(initialLimit ? "limit" : "market");
   const [limitPrice, setLimitPrice] = useState(initialLimit ?? "");
   const [state, setState] = useState<QuoteState>({ kind: "idle" });
+  // Each request gets a number. Editing a field bumps it, so an answer to an older request can never overwrite
+  // the screen and look like the quote for what is typed now.
+  const latest = useRef(0);
+  const reset = (): void => {
+    latest.current += 1;
+    setState({ kind: "idle" });
+  };
 
   useEffect(() => {
     if (!initialLimit) return;
     setOrderType("limit");
     setLimitPrice(initialLimit);
+    latest.current += 1;
     setState({ kind: "idle" });
   }, [initialLimit]);
 
@@ -59,6 +67,7 @@ export function SwapTab({ token, initialLimit }: { token: Token; initialLimit: s
 
   const getQuote = (): void => {
     if (!account.address || !ready) return;
+    const mine = (latest.current += 1);
     setState({ kind: "loading" });
     api
       .flashQuote({
@@ -69,8 +78,8 @@ export function SwapTab({ token, initialLimit }: { token: Token; initialLimit: s
         amount,
         limitPriceUsd: orderType === "limit" ? limitPrice : null,
       })
-      .then((quote) => setState({ kind: "ready", quote }))
-      .catch((error: ApiClientError) => setState({ kind: "error", error }));
+      .then((quote) => { if (mine === latest.current) setState({ kind: "ready", quote }); })
+      .catch((error: ApiClientError) => { if (mine === latest.current) setState({ kind: "error", error }); });
   };
 
   return (
@@ -79,7 +88,7 @@ export function SwapTab({ token, initialLimit }: { token: Token; initialLimit: s
       <TextField
         label="Spend (USDC)"
         value={amount}
-        onChange={(v) => { setAmount(v); setState({ kind: "idle" }); }}
+        onChange={(v) => { setAmount(v); reset(); }}
         inputMode="decimal"
         placeholder="2.00"
         error={aError}
@@ -89,13 +98,13 @@ export function SwapTab({ token, initialLimit }: { token: Token; initialLimit: s
         label="Order type"
         options={[{ value: "market", label: "Market" }, { value: "limit", label: "Limit" }]}
         value={orderType}
-        onChange={(v) => { setOrderType(v); setState({ kind: "idle" }); }}
+        onChange={(v) => { setOrderType(v); reset(); }}
       />
       {orderType === "limit" ? (
         <TextField
           label={`Buy when price is at or below`}
           value={limitPrice}
-          onChange={(v) => { setLimitPrice(v); setState({ kind: "idle" }); }}
+          onChange={(v) => { setLimitPrice(v); reset(); }}
           inputMode="decimal"
           error={pError}
           suffix="USD"

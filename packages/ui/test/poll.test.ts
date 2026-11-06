@@ -19,14 +19,43 @@ describe("startPolling", () => {
   });
 
   it("never overlaps reads, even when refresh() is called while one is in flight", async () => {
-    let resolveRead: (v: number) => void = () => undefined;
-    const read = vi.fn(() => new Promise<number>((resolve) => { resolveRead = resolve; }));
+    const resolvers: Array<(v: number) => void> = [];
+    const read = vi.fn(() => new Promise<number>((resolve) => { resolvers.push(resolve); }));
     const poller = startPolling(read, 10_000, { onData: () => undefined, onError: () => undefined });
     poller.refresh();
     poller.refresh();
     expect(read).toHaveBeenCalledTimes(1);
-    resolveRead(1);
+    resolvers[0]?.(1);
     await vi.advanceTimersByTimeAsync(0);
+    poller.stop();
+  });
+
+  it("a refresh during a read is not lost: the stale answer is dropped and a fresh read follows at once", async () => {
+    const resolvers: Array<(v: string) => void> = [];
+    const read = vi.fn(() => new Promise<string>((resolve) => { resolvers.push(resolve); }));
+    const seen: string[] = [];
+    const poller = startPolling(read, 10_000, { onData: (v: string) => seen.push(v), onError: () => undefined });
+    expect(read).toHaveBeenCalledTimes(1);
+    poller.refresh(); // for example right after a bet confirms, while the first read is still in flight
+    resolvers[0]?.("before-the-bet");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen).toEqual([]); // the pre-bet answer is never shown
+    expect(read).toHaveBeenCalledTimes(2); // no waiting for the next 10 s tick
+    resolvers[1]?.("after-the-bet");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen).toEqual(["after-the-bet"]);
+    poller.stop();
+  });
+
+  it("a refresh while idle reads immediately and does not double up the schedule", async () => {
+    const read = vi.fn().mockResolvedValue(1);
+    const poller = startPolling(read, 10_000, { onData: () => undefined, onError: () => undefined });
+    await vi.advanceTimersByTimeAsync(0);
+    poller.refresh();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(read).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(read).toHaveBeenCalledTimes(3);
     poller.stop();
   });
 
