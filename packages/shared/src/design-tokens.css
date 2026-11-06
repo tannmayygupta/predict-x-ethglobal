@@ -1,0 +1,72 @@
+/* PredictX design tokens. Imported by the extension overlay (inside the shadow root) and the dashboard. */
+:root,
+:host {
+  /* color */
+  --px-ink: #14182b;        /* card surface */
+  --px-ink-2: #1d2340;      /* inputs, raised areas */
+  --px-ink-3: #262d52;      /* hover on raised areas */
+  --px-rule: #2c3358;       /* borders, dividers */
+  --px-text: #edebfa;       /* primary text */
+  --px-mute: #9aa1c7;       /* secondary text */
+  --px-amber: #ffb020;      /* primary action, brand */
+  --px-amber-ink: #14182b;  /* text on amber */
+  --px-yes: #34d399;
+  --px-no: #ff6b7a;
+  --px-page: #0d1020;       /* dashboard page background */
+
+  /* type */
+  --px-font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
+  --px-font-body: "Instrument Sans Variable", "Instrument Sans", system-ui, sans-serif;
+  --px-fs-12: 12px; --px-fs-13: 13px; --px-fs-14: 14px; --px-fs-16: 16px;
+  --px-fs-20: 20px; --px-fs-28: 28px; --px-fs-40: 40px;
+
+  /* space (4px grid) */
+  --px-s1: 4px; --px-s2: 8px; --px-s3: 12px; --px-s4: 16px; --px-s6: 24px; --px-s8: 32px;
+
+  /* shape */
+  --px-r-input: 6px; --px-r-button: 10px; --px-r-card: 14px; --px-notch: 8px;
+
+  /* elevation and motion */
+  --px-shadow: 0 8px 30px rgba(10, 12, 30, 0.45);
+  --px-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --px-t-fast: 120ms;
+  --px-t-card: 140ms;
+
+  /* layering */
+  --px-z-overlay: 2147483000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root, :host { --px-t-fast: 0ms; --px-t-card: 0ms; }
+}
+
+.px-num { font-family: var(--px-font-display); font-variant-numeric: tabular-nums; }
+
+/* The Odds Slip: question area above, stake area below, a perforated tear line between them,
+   with two notches cut into the left and right edges. Use background = the surface behind the slip. */
+.px-slip {
+  --px-slip-bg: var(--px-page);
+  position: relative;
+  background: var(--px-ink);
+  border: 1px solid var(--px-rule);
+  border-radius: var(--px-r-card);
+}
+.px-slip__tear {
+  position: relative;
+  height: 0;
+  border-top: 1px dashed var(--px-rule);
+  margin: 0 var(--px-s4);
+}
+.px-slip__tear::before,
+.px-slip__tear::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--px-notch) * -1);
+  width: calc(var(--px-notch) * 2);
+  height: calc(var(--px-notch) * 2);
+  border-radius: 50%;
+  background: var(--px-slip-bg);
+  border: 1px solid var(--px-rule);
+}
+.px-slip__tear::before { left: calc(var(--px-s4) * -1 - var(--px-notch) - 1px); }
+.px-slip__tear::after { right: calc(var(--px-s4) * -1 - var(--px-notch) - 1px); }
