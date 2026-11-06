@@ -16,8 +16,13 @@ import { FlashService } from "../services/flash";
 export const OrderParams = z.object({ orderId: z.string().min(1) });
 
 const flashRoutes: FastifyPluginAsync = async (app) => {
-  const { db, clock, flash } = app.deps;
-  const service = new FlashService({ flash, clock, quotes: new QuotesRepo(db), orders: new OrdersRepo(db) }, app.log);
+  const { db, clock, flash, config } = app.deps;
+  // Mock orders move no funds, so only the real Flash client needs the opt-in.
+  const ordersEnabled = config.flashMock || config.flashOrdersEnabled;
+  const service = new FlashService(
+    { flash, clock, quotes: new QuotesRepo(db), orders: new OrdersRepo(db), ordersEnabled },
+    app.log,
+  );
 
   app.post(
     "/flash/quote",

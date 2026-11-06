@@ -8,7 +8,7 @@
 | Extension | Chrome MV3, React 18, Vite + `@crxjs/vite-plugin`, Tailwind CSS, Shadow DOM overlay |
 | Dashboard | React 18 + Vite SPA, React Router, Tailwind, deployed on Vercel |
 | Wallet / chain client | `viem`, MetaMask only |
-| Backend | Node 20, Fastify, `zod`, `pino`, `better-sqlite3` (no ORM) |
+| Backend | Node 22 (see D-B10), Fastify, `zod`, `pino`, `better-sqlite3` (no ORM) |
 | LLM | OpenAI API, official `openai` SDK, Structured Outputs; model id in `OPENAI_MODEL` |
 | Prices | CoinGecko API (one source: popup, agent and CRE) |
 | Execution | Definitive Flash REST API, backend only, Base mainnet, `$5` max per order |
@@ -51,6 +51,18 @@
 | D-B14 | The PredictionPool ABI the backend reads is defined in packages/shared/src/abi.ts; T-B06 must implement it unchanged | Backend and dashboard were built before the contract |
 | D-B15 | OpenAI call: responses.parse with strict json_schema derived from InsightResponse, max_output_tokens 300, reasoning effort none, store false, maxRetries 0, 8 s timeout; empty key boots fine and answers degraded | FR-B-03 and FR-I-03 |
 
+## Testnet-only build decisions (2026-11-06, approved by the human)
+
+| ID | Decision | Why |
+| --- | --- | --- |
+| D-T1 | The Swap tab shows real Flash quotes but never submits an order; the backend enforces it with `FLASH_ORDERS_ENABLED` (default false, real mode only) | Flash has no testnet; this build uses no mainnet funds |
+| D-T2 | Pools are settled by a local loop (`scripts/resolver-loop.ts`) that runs `cre workflow simulate --broadcast` through the MockKeystoneForwarder; the UI labels it a CRE simulation | A deployed workflow needs a redeployed pool and CRE deploy access |
+| D-T3 | `packages/ui` holds the API client, chain controllers and React pieces shared by the extension and the dashboard | The bet box must reuse the dashboard components (T-A14) without copying them |
+| D-T4 | No MSW mock server (T-A02 dropped); the frontends talk to the real local backend and the chain | Nothing in the product may be faked |
+| D-T5 | The extension calls the backend through its service worker, which coalesces identical GETs | Avoids x.com CORS/CSP/Private Network Access limits and the 60 req/min rate limit |
+| D-T6 | After a transaction the UI re-reads the affected pool and position from the chain with viem | The backend caches pool reads for 10 s |
+| D-T7 | Composer link is `x.com/intent/post` | Resolves the open item below |
+
 ## Open items (a human must confirm; an agent never decides these)
 
 - [ ] Flash order status values and the `GET /order/{id}` response (Gate 0 records them in `docs/GATE0.md`)
@@ -59,7 +71,7 @@
 - [x] Whether `cre workflow simulate` can broadcast the report onchain: yes, via `--broadcast` through the MockKeystoneForwarder (2026-10-31). Deployed workflows need a pool redeployed with KeystoneForwarder 0xF8344CFd5c43616a4366C34E3EEE75af79a74482
 - [x] The exact current OpenAI model id for `OPENAI_MODEL`: `gpt-6-luna` (cheapest non-deprecated; gpt-5-nano shuts down 2026-12-11 and lacks reasoning effort none; gpt-4.1-nano shut down 2026-10-23). Chosen by the human on 2026-10-30.
 - [ ] ETHGlobal rule: how many sponsor prizes one project may enter
-- [ ] Whether the composer link is `x.com/intent/tweet` or `x.com/intent/post` on demo day
+- [x] Whether the composer link is `x.com/intent/tweet` or `x.com/intent/post` on demo day: `intent/post` (D-T7, 2026-11-06)
 - [ ] Dashboard domain for `VITE_DASHBOARD_URL`
 - [ ] zod range: apps/backend and packages/shared declare ^3.23.8 but openai/helpers/zod needs >= 3.25 (lockfile has 3.25.76); bump both together
 - [ ] maxSlippage for $5 Flash orders: Flash recommended 0.15 for a $2 buy; our default is 0.01 (docs/notes/flash-api.md section 11)

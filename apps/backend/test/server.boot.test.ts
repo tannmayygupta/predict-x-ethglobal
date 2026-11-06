@@ -89,7 +89,8 @@ describe("B10-03 boot log shows the resolved config with secrets redacted", () =
 const SHUTDOWN_LIMIT_MS = 2_000;
 
 describe("B10-04 graceful shutdown", () => {
-  it(
+  // Windows has no SIGTERM: Node force-terminates the child and no handler runs, so exit code null is expected there.
+  it.skipIf(process.platform === "win32")(
     "exits 0 within 2 s of SIGTERM and closes the SQLite handle (the WAL is checkpointed and removed)",
     async () => {
       server = ServerProcess.start();

@@ -34,6 +34,8 @@ const EnvSchema = z.object({
   FLASH_API_KEY: z.string().default(""),
   FLASH_BASE_URL: z.string().url().default(DEFAULT_FLASH_BASE_URL),
   FLASH_MOCK: BooleanString,
+  /** Real Flash orders spend mainnet funds, so submitting them is opt-in; quotes are always allowed. */
+  FLASH_ORDERS_ENABLED: BooleanString.default("false"),
   OPENAI_API_KEY: z.string().default(""),
   OPENAI_MODEL: z.string().default(""),
   COINGECKO_API_KEY: z.string().default(""),
@@ -65,6 +67,7 @@ export interface Config {
   flashApiKey: string;
   flashBaseUrl: string;
   flashMock: boolean;
+  flashOrdersEnabled: boolean;
   openaiApiKey: string;
   openaiModel: string;
   coingeckoApiKey: string;
@@ -104,6 +107,7 @@ export function loadConfig(env: EnvSource): Config {
     flashApiKey: e.FLASH_API_KEY,
     flashBaseUrl: e.FLASH_BASE_URL,
     flashMock: e.FLASH_MOCK,
+    flashOrdersEnabled: e.FLASH_ORDERS_ENABLED,
     openaiApiKey: e.OPENAI_API_KEY,
     openaiModel: e.OPENAI_MODEL,
     coingeckoApiKey: e.COINGECKO_API_KEY,

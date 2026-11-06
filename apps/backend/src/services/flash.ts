@@ -27,6 +27,8 @@ export interface FlashServiceDeps {
   clock: Clock;
   quotes: QuotesRepo;
   orders: OrdersRepo;
+  /** False means real orders are refused before any quote is read or spent; quotes still work. */
+  ordersEnabled: boolean;
 }
 
 /** The subset of a pino logger the service needs; keeps services free of Fastify types. */
@@ -34,6 +36,8 @@ export interface FlashLog {
   warn(obj: object, msg: string): void;
   error(obj: object, msg: string): void;
 }
+
+export const ORDERS_DISABLED_MESSAGE = "Orders are disabled on this server. Quotes only (FLASH_ORDERS_ENABLED=false).";
 
 /** D-B3: once an order can no longer change, polling it must not spend Flash's 5 req/s budget. */
 const TERMINAL_STATUSES: ReadonlySet<OrderStatus> = new Set<OrderStatus>(["filled", "failed", "expired"]);
@@ -118,6 +122,8 @@ export class FlashService {
   }
 
   async order(request: FlashOrderRequest): Promise<FlashOrderResponse> {
+    // Checked first so a refused order never reads, marks or spends a quote.
+    if (!this.deps.ordersEnabled) throw flashError(ORDERS_DISABLED_MESSAGE);
     const stored = this.deps.quotes.get(request.quoteId);
     // API_CONTRACT section 1: a missing quote is QUOTE_EXPIRED, so the client simply requests a new one.
     if (!stored) throw quoteExpired(`quote ${request.quoteId} is unknown or expired; request a new quote`);
