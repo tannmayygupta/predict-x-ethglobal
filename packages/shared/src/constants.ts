@@ -29,5 +29,8 @@ export const GTC_DEADLINE_THRESHOLD = 2 ** 40;
  * production alias on purpose. The <project>-<team>.vercel.app alias is behind Vercel Authentication, so a link to it in
  * a post sends every reader to a login page.
  */
+/** Appended to every draft post so the project is easy to find on X. */
+export const TWEET_HASHTAGS = "#predictx $predictx";
+
 export const DEPLOYED_APP_URL = "https://predictx-tawny.vercel.app";
 export const DEPLOYED_API_BASE_URL = `${DEPLOYED_APP_URL}${API_PREFIX}`;

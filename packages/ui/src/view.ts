@@ -71,6 +71,8 @@ export function isMockQuote(quoteId: string): boolean {
 
 /** Price age after which the card says "Price delayed" even if the refresh did not fail outright. */
 export const STALE_PRICE_SECONDS = 120;
+/** A local clock this far from the chain's is moved onto it; under this the gap is just block-time lag. */
+export const CLOCK_SKEW_THRESHOLD_SECONDS = 3;
 
 export const STATUS_LABEL = { open: "Open", awaiting: "Awaiting result", resolved: "Resolved", void: "Void" } as const;
 

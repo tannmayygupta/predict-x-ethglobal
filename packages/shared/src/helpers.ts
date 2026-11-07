@@ -1,4 +1,4 @@
-import { MAX_QUESTION_LENGTH } from "./constants";
+import { MAX_QUESTION_LENGTH, TWEET_HASHTAGS } from "./constants";
 import type { PoolStatus } from "./schemas";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -52,8 +52,27 @@ export function buildQuestion(i: QuestionInput): string {
 
 /** Text for the X composer. The marker PX#<id> and the link are both included on purpose. */
 export function buildTweetText(p: { id: number; question: string; dashboardUrl: string }): string {
-  const text = `${p.question}\n\nBet YES or NO: ${p.dashboardUrl}\nPX#${p.id}`;
+  const text = `${p.question}\n\nBet YES or NO: ${p.dashboardUrl}\nPX#${p.id}\n\n${TWEET_HASHTAGS}`;
   const counted = text.replace(p.dashboardUrl, "x".repeat(23)); // X counts any URL as 23 chars
+  if (counted.length > 280) throw new Error("Post text too long");
+  return text;
+}
+
+/**
+ * Text for the X composer once a pool has closed: the verdict, the price it settled at, the same PX# marker (so the
+ * bet box also appears under this post and shows the result) and the same tags. `priceLabel` arrives formatted ("$2,234.12").
+ */
+export function buildResultTweetText(p: {
+  id: number;
+  question: string;
+  outcome: "yes" | "no" | null;
+  priceLabel: string | null;
+  dashboardUrl: string;
+}): string {
+  const verdict = p.outcome === "yes" ? "Result: YES." : p.outcome === "no" ? "Result: NO." : "No result: nobody took the other side, so everyone is refunded.";
+  const price = p.outcome !== null && p.priceLabel ? `\nPrice at close: ${p.priceLabel}.` : "";
+  const text = `${verdict} ${p.question}${price}\nSettled by Chainlink CRE (simulation).\n\n${p.dashboardUrl}\nPX#${p.id}\n\n${TWEET_HASHTAGS}`;
+  const counted = text.replace(p.dashboardUrl, "x".repeat(23));
   if (counted.length > 280) throw new Error("Post text too long");
   return text;
 }

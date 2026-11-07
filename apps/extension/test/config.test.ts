@@ -66,6 +66,6 @@ describe("the Create -> Post draft", () => {
     };
     // The chain read is refused, which exercises the fallback link path; the chain path builds it from the same origin.
     const pool = await postablePool(chain, 12, prepared, { attempts: 1, read: () => Promise.reject(new Error("rpc down")) });
-    expect(buildTweetText(pool)).toBe(`Will $ETH be above $2236 at 23:06 UTC on 6 Nov?\n\nBet YES or NO: ${DEPLOYED_APP_URL}/pool/12\nPX#12`);
+    expect(buildTweetText(pool)).toBe(`Will $ETH be above $2236 at 23:06 UTC on 6 Nov?\n\nBet YES or NO: ${DEPLOYED_APP_URL}/pool/12\nPX#12\n\n#predictx $predictx`);
   });
 });

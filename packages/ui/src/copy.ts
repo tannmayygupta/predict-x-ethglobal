@@ -85,6 +85,10 @@ export const COPY = {
   review_only: "Review only",
   settled_by: "Settled by Chainlink CRE (simulation)",
   minted: "Test USDC added. Place your bet.",
+  share_result: "Share result on X",
+  limit_far_below: "That limit is far below the market price. Enter a price within 50% of it.",
+  flash_unavailable: "Flash couldn't price that order. Try again in a moment.",
+  check_inputs: "Check the amount and the limit price, then try again.",
 } as const;
 
 export const closesIn = (time: string): string => `Closes in ${time}`;

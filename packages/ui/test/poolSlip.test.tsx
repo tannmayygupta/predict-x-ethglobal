@@ -218,3 +218,40 @@ describe("PoolSlip one-click test USDC", () => {
     mint.mockRestore();
   });
 });
+
+describe("PoolSlip result announcement", () => {
+  const opened = () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    return open;
+  };
+  const draftOf = (open: ReturnType<typeof opened>): string => {
+    const url = String(open.mock.calls[0]?.[0]);
+    expect(url.startsWith("https://x.com/intent/post?text=")).toBe(true);
+    return decodeURIComponent(url.split("?text=")[1] ?? "");
+  };
+
+  it("a settled pool offers to share the result, as a draft with the verdict, the price, the marker and the tags", () => {
+    const open = opened();
+    slip({ pool: pool({ id: 7, status: "resolved", resolveTime: 1, outcome: "yes", resolvedPriceUsd: "2238.51" }), position: position() });
+    fireEvent.click(screen.getByRole("button", { name: "Share result on X" }));
+    const text = draftOf(open);
+    expect(text).toContain("Result: YES.");
+    expect(text).toContain("Price at close: $2,238.51.");
+    expect(text).toContain("PX#7");
+    expect(text.endsWith("#predictx $predictx")).toBe(true);
+    open.mockRestore();
+  });
+
+  it("a pool nobody took the other side of announces the refund", () => {
+    const open = opened();
+    slip({ pool: pool({ id: 8, status: "void", resolveTime: 1, outcome: null }) });
+    fireEvent.click(screen.getByRole("button", { name: "Share result on X" }));
+    expect(draftOf(open)).toContain("everyone is refunded");
+    open.mockRestore();
+  });
+
+  it("an open pool has nothing to announce yet", () => {
+    slip({ pool: pool() });
+    expect(screen.queryByRole("button", { name: "Share result on X" })).toBeNull();
+  });
+});

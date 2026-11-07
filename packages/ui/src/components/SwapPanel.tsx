@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import type { ApiClientError } from "../api";
 import { useApp } from "../context";
 import { COPY } from "../copy";
-import { useNow, useWallet } from "../react/useExternal";
+import { currentSeconds, useNow, useWallet } from "../react/useExternal";
 import { useMarket } from "../react/useMarket";
 import { Button, Notice } from "./primitives";
 import { MarketReference, SwapForm, type OrderType } from "./swap/SwapForm";
 import { QuoteSummary } from "./swap/QuoteSummary";
-import { DEFAULT_SLIPPAGE, expireAtFor, isPositiveDecimal, type ExpiryId } from "./swap/swapMath";
+import { quoteFailureText } from "./swap/quoteErrors";
+import { DEFAULT_SLIPPAGE, expireAtFor, isPositiveDecimal, limitTooFarBelow, type ExpiryId } from "./swap/swapMath";
 import { WalletBar } from "./wallet";
 
 type QuoteState =
@@ -31,9 +32,10 @@ function amountError(amount: string): string | null {
   }
 }
 
-function priceError(price: string): string | null {
+function priceError(price: string, marketPrice: string | null): string | null {
   if (price.trim() === "") return null;
-  return isPositiveDecimal(price) ? null : "Enter a price above zero.";
+  if (!isPositiveDecimal(price)) return "Enter a price above zero.";
+  return marketPrice !== null && limitTooFarBelow(price, marketPrice) ? COPY.limit_far_below : null;
 }
 
 export interface SwapPanelProps {
@@ -75,14 +77,14 @@ export function SwapPanel({ token, initialLimit, limitNonce = 0 }: SwapPanelProp
   }, [initialLimit, limitNonce]);
 
   const aError = amountError(amount);
-  const pError = orderType === "limit" ? priceError(limitPrice) : null;
+  const pError = orderType === "limit" ? priceError(limitPrice, market?.priceUsd ?? null) : null;
   const ready = amount.trim() !== "" && aError === null && (orderType === "market" || (limitPrice.trim() !== "" && pError === null));
   const suggested = state.kind === "ready" ? state.quote.recommendedSlippage : null;
 
   const getQuote = (): void => {
     if (!account.address || !ready) return;
     const mine = (latest.current += 1);
-    const chosenExpireAt = orderType === "limit" ? expireAtFor(expiry, Math.floor(Date.now() / 1000)) : null;
+    const chosenExpireAt = orderType === "limit" ? expireAtFor(expiry, currentSeconds()) : null;
     setState({ kind: "loading" });
     api
       .flashQuote({
@@ -90,8 +92,9 @@ export function SwapPanel({ token, initialLimit, limitNonce = 0 }: SwapPanelProp
         symbol: token.symbol,
         side: "buy",
         orderType,
-        amount,
-        limitPriceUsd: orderType === "limit" ? limitPrice : null,
+        // Trimmed: the screen accepts " 2" (its checks trim) but the backend refuses it as an invalid decimal.
+        amount: amount.trim(),
+        limitPriceUsd: orderType === "limit" ? limitPrice.trim() : null,
         // Slippage is a market-order setting and expireAt a limit-order one; the contract rejects expireAt on market.
         ...(orderType === "market" ? { slippage } : {}),
         ...(chosenExpireAt !== null ? { expireAt: chosenExpireAt } : {}),
@@ -140,7 +143,7 @@ export function SwapPanel({ token, initialLimit, limitNonce = 0 }: SwapPanelProp
 }
 
 function QuoteFailure({ error, onRetry }: { error: ApiClientError; onRetry(): void }) {
-  const text = error.code === "NETWORK" || error.code === "INTERNAL" ? "Couldn't load the quote. Try again." : error.message;
+  const text = quoteFailureText(error.code, error.message);
   return (
     <Notice kind="error" action={<Button size="sm" variant="secondary" onClick={onRetry}>Try again</Button>}>
       {text}

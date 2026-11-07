@@ -1,10 +1,10 @@
 import { buildTweetText } from "@predictx/shared";
 import { useMemo, useState } from "react";
 import { COPY } from "../copy";
+import { openComposer } from "../share";
 import type { PostablePool } from "../created";
 import { Button, Notice } from "./primitives";
 
-const COMPOSER_URL = "https://x.com/intent/post";
 const COPIED_MS = 1500;
 
 /** A5: the pool exists onchain. The text is exactly buildTweetText; the user presses Post in the X composer. */
@@ -19,7 +19,7 @@ export function PostStep({ pool, onDone }: { pool: PostablePool; onDone(): void 
   }, [pool]);
 
   const post = (): void => {
-    if (text) window.open(`${COMPOSER_URL}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    if (text) openComposer(text);
   };
   const copyLink = (): void => {
     navigator.clipboard.writeText(pool.dashboardUrl).then(

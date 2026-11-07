@@ -1,11 +1,12 @@
-import { formatUsdc, toUsdcUnits, type Pool, type Position } from "@predictx/shared";
+import { buildResultTweetText, formatUsdc, toUsdcUnits, type Pool, type Position } from "@predictx/shared";
 import { useState, type CSSProperties } from "react";
 import { FAUCET_MINT_USDC, claim, mintTestUsdc, refund, stake, type StakeStep } from "../actions";
 import type { ChainClients } from "../chain";
 import { COPY, approveAmount, claimAmount, closesIn, refundAmount } from "../copy";
 import { UiError, toUiError } from "../errors";
 import { useNow, useWallet } from "../react/useExternal";
-import { effectiveStatus, formatCountdown, poolSize } from "../view";
+import { openComposer } from "../share";
+import { effectiveStatus, formatCountdown, formatUsdPrice, poolSize } from "../view";
 import type { WalletController } from "../wallet";
 import { TextField } from "./forms";
 import { SwitchNetworkButton } from "./wallet";
@@ -171,6 +172,24 @@ function stakedText(position: Position | null): string | null {
   return parts.length ? `You staked ${parts.join(" and ")}.` : null;
 }
 
+/** After a pool closes: one click opens an X draft announcing the result (it carries the PX# marker, so the bet box shows the result under it too). */
+function ShareResult({ pool }: { pool: Pool }) {
+  let text: string | null = null;
+  try {
+    text = buildResultTweetText({
+      id: pool.id,
+      question: pool.question,
+      outcome: pool.outcome,
+      priceLabel: pool.resolvedPriceUsd ? formatUsdPrice(pool.resolvedPriceUsd) : null,
+      dashboardUrl: pool.dashboardUrl,
+    });
+  } catch {
+    return null; // too long to post: the link and the result are still on the page
+  }
+  const draft = text;
+  return <Button variant="secondary" size="sm" onClick={() => openComposer(draft)}>{COPY.share_result}</Button>;
+}
+
 function ResolvedBlock({ pool, position, controller, chain, faucetUrl, onChanged }: PoolSlipProps) {
   const { busy, setBusy, error, setError } = useTx(controller);
   const yes = pool.outcome === "yes";
@@ -199,6 +218,7 @@ function ResolvedBlock({ pool, position, controller, chain, faucetUrl, onChanged
       {staked ? <p className="m-0 text-14">{staked} {outcomeLine}</p> : null}
       <ErrorLine error={error} controller={controller} faucetUrl={faucetUrl} />
       {claimable !== "0" ? <ClaimButton controller={controller} chain={chain} busy={busy === "claiming"} label={claimAmount(formatUsdc(claimable))} onClick={run} /> : null}
+      <div><ShareResult pool={pool} /></div>
     </div>
   );
 }
@@ -220,6 +240,7 @@ function VoidBlock({ pool, position, controller, chain, faucetUrl, onChanged }: 
       <p className="m-0 text-14 text-text">{COPY.void_note}</p>
       <ErrorLine error={error} controller={controller} faucetUrl={faucetUrl} />
       {refundable !== "0" ? <ClaimButton controller={controller} chain={chain} busy={busy === "refunding"} label={refundAmount(formatUsdc(refundable))} onClick={run} /> : null}
+      <div><ShareResult pool={pool} /></div>
     </div>
   );
 }

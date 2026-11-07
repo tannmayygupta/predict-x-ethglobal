@@ -3,7 +3,7 @@ import tokensJson from "../tokens.json";
 import {
   FlashOrderDetail, FlashQuoteRequest, FlashQuoteResponse, InsightResponse, Market, MarketChart, Pool, Position, SignedDecimalString, Token, TokensResponse,
   MAX_CHART_POINTS,
-  buildQuestion, buildTweetText, computePayout, derivePoolStatus, extractPoolId, formatUsdc, fromE18, toStrikeE18,
+  buildQuestion, buildResultTweetText, buildTweetText, computePayout, derivePoolStatus, extractPoolId, formatUsdc, fromE18, toStrikeE18,
   toUsdcUnits, fixtures,
 } from "../src";
 
@@ -120,6 +120,7 @@ describe("helpers", () => {
     expect(q).toBe("Will $PEPE be above $0.0000120 at 14:40 UTC on 28 Oct?");
     const t = buildTweetText({ id: 12, question: q, dashboardUrl: "https://predictx.app/pool/12" });
     expect(t).toContain("PX#12");
+    expect(t.endsWith("\n\n#predictx $predictx")).toBe(true);
     expect(extractPoolId(t)).toBe(12);
     expect(extractPoolId("see https://predictx.app/pool/7")).toBe(7);
     expect(extractPoolId("nothing here")).toBeNull();
@@ -134,5 +135,33 @@ describe("helpers", () => {
   it("matches the pitch payout example", () => {
     // YES $60, NO $40, fee 2%, YES wins: a $30 YES stake receives $49
     expect(computePayout(30_000_000n, 60_000_000n, 40_000_000n, 200)).toBe(49_000_000n);
+  });
+});
+
+describe("draft post text", () => {
+  const url = "https://predictx.app/pool/12";
+  const question = "Will $ETH be above $2236 at 23:06 UTC on 6 Nov?";
+
+  it("every pool draft carries the project tags and still fits in a post", () => {
+    const t = buildTweetText({ id: 12, question, dashboardUrl: url });
+    expect(t).toBe(`${question}\n\nBet YES or NO: ${url}\nPX#12\n\n#predictx $predictx`);
+    const longest = "Will $PEPE be above $0.00001234567890 at 23:06 UTC on 6 Nov? ".padEnd(140, "x");
+    expect(() => buildTweetText({ id: 123456, question: longest, dashboardUrl: url })).not.toThrow();
+  });
+
+  it("a result announcement states the verdict, the price, the marker and the tags", () => {
+    const yes = buildResultTweetText({ id: 12, question, outcome: "yes", priceLabel: "$2,238.51", dashboardUrl: url });
+    expect(yes.startsWith("Result: YES.")).toBe(true);
+    expect(yes).toContain("Price at close: $2,238.51.");
+    expect(yes).toContain("Settled by Chainlink CRE (simulation).");
+    expect(extractPoolId(yes)).toBe(12);
+    expect(yes.endsWith("#predictx $predictx")).toBe(true);
+    expect(buildResultTweetText({ id: 12, question, outcome: "no", priceLabel: "$2,100", dashboardUrl: url }).startsWith("Result: NO.")).toBe(true);
+  });
+
+  it("a pool nobody took the other side of announces a refund, with no price", () => {
+    const t = buildResultTweetText({ id: 12, question, outcome: null, priceLabel: null, dashboardUrl: url });
+    expect(t).toContain("everyone is refunded");
+    expect(t).not.toContain("Price at close");
   });
 });

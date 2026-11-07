@@ -7,7 +7,7 @@ import { COPY } from "../copy";
 import { prepareCreate, type PreparedPool } from "../create";
 import { postablePool, type PostablePool } from "../created";
 import { toUiError, type UiError } from "../errors";
-import { useNow, useWallet } from "../react/useExternal";
+import { currentSeconds, useNow, useWallet } from "../react/useExternal";
 import { formatUsdPrice } from "../view";
 import { Segmented, TextField } from "./forms";
 import { PostStep } from "./PostStep";
@@ -37,7 +37,8 @@ export function CreatePrediction({ tokens, initialSymbol, onDone }: { tokens: To
 
   // The contract judges lead time by block time, so the preview must too: measure how far the local clock is off.
   useEffect(() => {
-    chainNow(chain).then((t) => setSkew(t - Math.floor(Date.now() / 1000)), () => undefined);
+    // useNow() is already on the corrected clock, so only what is left over (block-time lag) is added back.
+    chainNow(chain).then((t) => setSkew(t - currentSeconds()), () => undefined);
   }, [chain]);
 
   useEffect(() => {

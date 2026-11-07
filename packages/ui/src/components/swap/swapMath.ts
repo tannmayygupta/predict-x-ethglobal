@@ -32,6 +32,9 @@ export function limitPresetPrice(marketPrice: string, pctBelow: string): string 
   return tidyPrice(belowBy(marketPrice, pctBelow));
 }
 
+/** A buy limit this far under the market will not fill in practice, and Flash still quotes it (a $0.0001 limit quoted 9,900 ETH). */
+export const MAX_LIMIT_BELOW_MARKET_PCT = "50";
+
 export type LimitGap = { kind: "below"; pct: string } | { kind: "at_or_above" };
 
 /** How a limit price compares to the live market. At or above market means a buy that fills immediately. */
@@ -41,6 +44,12 @@ export function limitGap(limitPrice: string, marketPrice: string): LimitGap | nu
   // Relative to market: (market - limit) / market, shown as a positive number of percent below.
   const below = percentOver(limitPrice, marketPrice, 2);
   return below === null ? null : { kind: "below", pct: below.replace(/^-/, "") };
+}
+
+/** True when the limit sits more than MAX_LIMIT_BELOW_MARKET_PCT under the live market price. */
+export function limitTooFarBelow(limitPrice: string, marketPrice: string): boolean {
+  const gap = limitGap(limitPrice, marketPrice);
+  return gap?.kind === "below" && compare(gap.pct, MAX_LIMIT_BELOW_MARKET_PCT) > 0;
 }
 
 /**
