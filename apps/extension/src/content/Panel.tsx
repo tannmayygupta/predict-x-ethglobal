@@ -1,5 +1,5 @@
 import type { Token } from "@predictx/shared";
-import { CreatePrediction, InsightPanel, SwapPanel, Tabs, TokenPicker, cx } from "@predictx/ui";
+import { CreatePrediction, InsightPanel, SwapPanel, Tabs, TokenPicker, cx, type LimitSuggestion } from "@predictx/ui";
 import { useEffect, useState, type ReactNode } from "react";
 import { saveMode, type PanelMode } from "./mode";
 
@@ -37,7 +37,13 @@ export function Panel({ tokens, tab, symbol, mode, onTab, onSymbol, onMode, onMi
   onMinimise(): void;
   onClose(): void;
 }) {
-  const [limit, setLimit] = useState<string | null>(null);
+  // One suggested limit per symbol: a tip for ETH must never prefill the BTC order. The nonce lets the same price re-apply.
+  const [limits, setLimits] = useState<Record<string, { price: string; nonce: number }>>({});
+  const applyLimit = (price: string, suggestion: LimitSuggestion): void => {
+    setLimits((prev) => ({ ...prev, [suggestion.symbol]: { price, nonce: (prev[suggestion.symbol]?.nonce ?? 0) + 1 } }));
+    onSymbol(suggestion.symbol);
+    onTab("swap");
+  };
   const token = tokens.find((t) => t.symbol === symbol) ?? tokens[0];
   const firstSwappable = tokens.find((t) => t.flashSupported)?.symbol;
 
@@ -93,16 +99,16 @@ export function Panel({ tokens, tab, symbol, mode, onTab, onSymbol, onMode, onMi
           {tab === "ai" ? (
             <>
               <TokenPicker tokens={tokens} symbol={token.symbol} onChange={onSymbol} />
-              <InsightPanel key={token.symbol} symbol={token.symbol} canTrade={token.flashSupported} onUseLimit={(price) => { setLimit(price); onTab("swap"); }} />
+              <InsightPanel key={token.symbol} symbol={token.symbol} canTrade={token.flashSupported} onUseLimit={applyLimit} />
             </>
           ) : null}
           {tab === "swap" ? (
             <>
               <TokenPicker tokens={tokens} symbol={token.symbol} onChange={onSymbol} only={(t) => t.flashSupported} />
-              <SwapPanel key={token.symbol} token={token} initialLimit={limit} />
+              <SwapPanel key={token.symbol} token={token} initialLimit={limits[token.symbol]?.price ?? null} limitNonce={limits[token.symbol]?.nonce ?? 0} />
             </>
           ) : null}
-          {tab === "predict" ? <CreatePrediction tokens={tokens} initialSymbol={token.symbol} onDone={onClose} /> : null}
+          {tab === "predict" ? <CreatePrediction key={token.symbol} tokens={tokens} initialSymbol={token.symbol} onDone={onClose} /> : null}
         </div>
       </div>
     </section>

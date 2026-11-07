@@ -124,11 +124,46 @@ describe("B03-06 failNextQuote hook", () => {
 });
 
 describe("B03-07 alignment with the shared fixture", () => {
-  it("equals fixtures.quoteEthMarket for the fixture input apart from quoteId and expiresAt", async () => {
-    const client = new MockFlashClient(new FakeClock());
+  it("matches fixtures.quoteEthMarket for the fixture input apart from the id, expiry and the derived factors", async () => {
+    const clock = new FakeClock();
+    clock.set(1_761_600_000);
+    const client = new MockFlashClient(clock);
     const quote = await client.quote({ request: marketRequest("2.00"), token: ETH });
-    expect(quote).toEqual({ ...fixtures.quoteEthMarket, quoteId: quote.quoteId, expiresAt: quote.expiresAt });
-    expect(quote.steps.orderTypedData).toBe(fixtures.quoteEthMarket.steps.orderTypedData);
+    const { spendUsd, receiveUsd, minReceive, effectivePriceUsd, marketPriceUsd, ...rest } = quote;
+    expect(rest).toEqual({
+      ...fixtures.quoteEthMarket,
+      quoteId: quote.quoteId,
+      expiresAt: quote.expiresAt,
+      spendUsd: undefined,
+      receiveUsd: undefined,
+      minReceive: undefined,
+      effectivePriceUsd: undefined,
+      marketPriceUsd: undefined,
+    });
+    // The factors are computed from the mock spot, not copied, and stay consistent with the amounts.
+    expect(spendUsd).toBe("2.00");
+    expect(receiveUsd).toBe("2.000113");
+    expect(minReceive).toBe("0.00080784");
+    expect(effectivePriceUsd).toBe("2450.98039216");
+    expect(marketPriceUsd).toBe("2451.11887255");
+    expect(quote.slippage).toBe("0.01");
+    expect(quote.orderDeadline).toBe(1_761_600_300);
+    expect(quote.steps.orderTypedData).not.toBe("");
+  });
+
+  it("limit quotes carry the limit price, no slippage factors and the chosen expiry (null = good till cancelled)", async () => {
+    const client = new MockFlashClient(new FakeClock());
+    const limit = await client.quote({ request: { ...limitRequest("2.00", "2380.00"), expireAt: 1_761_700_000 }, token: ETH });
+    expect(limit).toMatchObject({
+      recommendedSlippage: null,
+      slippage: null,
+      marketPriceUsd: null,
+      limitPriceUsd: "2380.00",
+      minReceive: limit.receive.amount,
+      orderDeadline: 1_761_700_000,
+    });
+    const gtc = await client.quote({ request: limitRequest("2.00", "2380.00"), token: ETH });
+    expect(gtc.orderDeadline).toBeNull();
   });
 
   it("prices market quotes off fixtures.marketEth.priceUsd so other amounts scale consistently", async () => {
@@ -137,5 +172,25 @@ describe("B03-07 alignment with the shared fixture", () => {
     // 4.00 / 2451.12 = 0.0016319... -> 6 decimals
     expect(quote.receive.amount).toBe("0.001632");
     expect(quote.receive.symbol).toBe("ETH");
+  });
+});
+
+describe("mock quotes use the requested token, not ETH", () => {
+  const tokenOf = (symbol: string) => Token.parse(tokensJson.tokens.find((t) => t.symbol === symbol));
+
+  it.each([
+    ["BTC", "0.000025", "81269"],
+    ["DEGEN", "1666.666667", "0.0012"],
+    ["BRETT", "40.000000", "0.05"],
+    ["ETH", "0.000816", "2451.12"],
+  ])("%s buys %s units at its own mock spot %s and keeps the q_mock_ prefix", async (symbol, receive, spot) => {
+    const client = new MockFlashClient(new FakeClock());
+    const quote = FlashQuoteResponse.parse(
+      await client.quote({ request: { ...marketRequest(), symbol }, token: tokenOf(symbol) }),
+    );
+    expect(quote.receive).toEqual({ symbol, amount: receive });
+    expect(quote.quoteId).toMatch(/^q_mock_/);
+    expect(quote.marketPriceUsd).not.toBeNull();
+    expect(Number(quote.marketPriceUsd)).toBeCloseTo(Number(spot), 0);
   });
 });

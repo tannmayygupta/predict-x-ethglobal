@@ -4,6 +4,7 @@ import { buildTagPattern, observeCashtags } from "../x/cashtags";
 import { attachHoverEvents } from "../x/hoverEvents";
 import { createHoverStore } from "../x/hoverStore";
 import { backgroundBehind, observePostBoxes } from "../x/postBoxes";
+import { pickUnderline } from "../x/underline";
 import { dashboardUrl } from "../config";
 import { api } from "./api";
 import { BetBox } from "./BetBox";
@@ -14,7 +15,7 @@ import { Overlay } from "./Overlay";
 import { loadTokens } from "./tokens";
 import { chain, wallet } from "./wallet";
 
-const { host, root } = mountShadow("predictx-overlay", { onEscape: () => window.dispatchEvent(new Event(ESCAPE_EVENT)) });
+const { host, root } = mountShadow("predictx-overlay", { className: "px-root px-theme-dark", onEscape: () => window.dispatchEvent(new Event(ESCAPE_EVENT)) });
 const hover = createHoverStore();
 
 void loadFonts();
@@ -47,7 +48,10 @@ observePostBoxes(document.body, {
 // The allowlist comes from the backend (GET /tokens). Until it answers there is nothing to highlight.
 void loadTokens().then((tokens) => {
   const pattern = buildTagPattern(tokens.map((t) => t.symbol));
-  // The underline colour is read from the design tokens, which are defined on the shadow host.
-  const underline = getComputedStyle(host).getPropertyValue("--px-amber").trim();
-  if (pattern && underline) observeCashtags(document.body, { pattern, underline });
+  // Both underline colours come from the design tokens: the host carries the paper theme (cobalt), the overlay
+  // root the dark one (lime). The page luminance behind the text decides which one stays readable.
+  const cobalt = getComputedStyle(host).getPropertyValue("--px-amber").trim();
+  const lime = getComputedStyle(root).getPropertyValue("--px-amber").trim();
+  const underline = pickUnderline(backgroundBehind(document.body), cobalt, lime);
+  if (pattern && cobalt && lime) observeCashtags(document.body, { pattern, underline });
 });

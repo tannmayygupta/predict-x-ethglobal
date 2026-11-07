@@ -4,7 +4,7 @@
 
 PredictX is a Chrome extension for X. When a tweet mentions a coin, such as `$ETH`, you hover over it and can:
 
-1. **See the price and buy the coin** in a small popup. The swap runs through Definitive Flash.
+1. **See the price, a 24h chart and market stats** in a hover card, and **get a swap quote** from Definitive Flash. This build only shows quotes: it never sends an order, so no mainnet funds are used.
 2. **Get a short AI tip** about the coin, with a suggested buy price. The tip comes from OpenAI and never trades for you.
 3. **Start a prediction pool**, for example "Will $ETH be above $3,000 at 18:00 UTC?", and post it to X. Anyone can bet YES or NO with test USDC. When time is up, a Chainlink workflow checks the real price and settles the pool, and winners claim their share.
 
@@ -74,7 +74,7 @@ pnpm --filter @predictx/backend start       # API on http://localhost:8787/api/v
 | Settlement + money path | | `scripts/resolver-loop.ts` and `scripts/e2e-lifecycle.ts`, see [scripts/README.md](scripts/README.md) |
 | Demo pools | | `scripts/seed-pools.ts` |
 
-Keys live only in `.env`, which git ignores. Never commit it. Without an OpenAI key the tips fall back to a basic note; without a Flash key swaps run in mock mode.
+Keys live only in `.env`, which git ignores. Never commit it. Without an OpenAI key the tips fall back to a basic note; with `FLASH_MOCK=true` swap quotes are fake and carry a MOCK badge. Hosted secrets are tracked in B-007.
 
 ## Repo layout
 
@@ -106,6 +106,8 @@ The planning docs drive the build. Read them in this order:
 | 7 | [docs/UI_REFERENCE.md](docs/UI_REFERENCE.md) | Every screen, design token and piece of copy |
 | 8 | [docs/TASKS.md](docs/TASKS.md) | The task backlog with acceptance checks |
 | 9 | [docs/DECISIONS.md](docs/DECISIONS.md) | Locked stack, decision log, open questions |
+| 10 | [docs/DEFINITIVE.md](docs/DEFINITIVE.md) | Every place Definitive Flash is used, the quote data flow, how to enable orders later |
+| 11 | [docs/APIS.md](docs/APIS.md) | Every external API: auth, rate limit, cache, failure behaviour, owner file |
 
 Keep these up to date as you work: `docs/TASKS.md` and `docs/TRACKER.md` (status), `docs/WORKLOG.md` (what happened), `docs/BLOCKERS.md` (what needs a human).
 

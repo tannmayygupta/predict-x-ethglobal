@@ -15,8 +15,15 @@ export interface InsightModel {
 }
 
 export class InsightModelError extends Error {
-  constructor(message: string) {
+  /**
+   * False for failures a second call cannot fix (bad key, refusal) or cannot afford (a timeout already used
+   * most of the 6 s budget), so the service skips its one retry.
+   */
+  readonly retryable: boolean;
+
+  constructor(message: string, options: { retryable?: boolean } = {}) {
     super(message);
     this.name = "InsightModelError";
+    this.retryable = options.retryable ?? true;
   }
 }

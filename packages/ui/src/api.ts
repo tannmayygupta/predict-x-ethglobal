@@ -8,6 +8,8 @@ import {
   FlashQuoteResponse,
   InsightResponse,
   Market,
+  MarketChart,
+  type ChartRange,
   Pool,
   PoolsResponse,
   Position,
@@ -65,6 +67,7 @@ export type FlashQuoteInput = z.input<typeof FlashQuoteRequest>;
 export interface ApiClient {
   tokens(): Promise<z.infer<typeof TokensResponse>["tokens"]>;
   market(symbol: string): Promise<Market>;
+  chart(symbol: string, range: ChartRange): Promise<MarketChart>;
   insight(request: InsightRequest): Promise<InsightResponse>;
   flashQuote(request: FlashQuoteInput): Promise<FlashQuoteResponse>;
   pools(): Promise<Pool[]>;
@@ -95,6 +98,7 @@ export function createApiClient(baseUrl: string, transport: Transport = fetchTra
   return {
     tokens: async () => (await call(TokensResponse, { method: "GET", path: "/tokens" })).tokens,
     market: (symbol) => call(Market, { method: "GET", path: `/market/${encodeURIComponent(symbol)}` }),
+    chart: (symbol, range) => call(MarketChart, { method: "GET", path: `/market/${encodeURIComponent(symbol)}/chart?range=${range}` }),
     insight: (request) => call(InsightResponse, { method: "POST", path: "/insight", body: request }),
     flashQuote: (request) => call(FlashQuoteResponse, { method: "POST", path: "/flash/quote", body: request }),
     pools: async () => (await call(PoolsResponse, { method: "GET", path: "/pools" })).pools,

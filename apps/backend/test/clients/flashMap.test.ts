@@ -152,6 +152,21 @@ describe("fromFlashQuote price impact", () => {
   });
 });
 
+describe("fromFlashQuote amounts in exponent form", () => {
+  it.each([
+    ["1e-7", "0.0000001"],
+    ["2.5E-7", "0.00000025"],
+    ["1.5e3", "1500"],
+  ])("receive amount %s is read as %s instead of failing", (input, expected) => {
+    const quote = fromFlashQuote({ ...rawQuote(), to: { amount: input } }, MARKET_INPUT, NOW);
+    expect(quote.receive.amount).toBe(expected);
+  });
+
+  it("still rejects an amount that is not a number at all", () => {
+    expect(() => fromFlashQuote({ ...rawQuote(), to: { amount: "abc" } }, MARKET_INPUT, NOW)).toThrow(FlashError);
+  });
+});
+
 describe("B03-11 fromFlashQuote expiry", () => {
   it("sets expiresAt = now + 60 because Flash returns no expiry field", () => {
     const quote = fromFlashQuote(rawQuote(), MARKET_INPUT, NOW);

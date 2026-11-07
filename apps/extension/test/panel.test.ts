@@ -97,6 +97,12 @@ describe("PredictX panel", () => {
     expect((container.querySelector("select") as HTMLSelectElement).value).toBe("ETH");
   });
 
+  it("keeps the swap and picker lists to the tokens Flash can trade, with a limit stored per symbol", async () => {
+    await render("swap");
+    const options = [...container.querySelectorAll("select option")].map((o) => o.textContent);
+    expect(options).toEqual(["ETH"]);
+  });
+
   it("toggles between popup, slide-up and side panel and remembers the choice", async () => {
     const seen: PanelMode[] = [];
     await render("ai", (m) => seen.push(m));

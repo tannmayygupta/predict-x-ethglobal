@@ -23,10 +23,13 @@ module.exports = {
       yes: "var(--px-yes)",
       no: "var(--px-no)",
       page: "var(--px-page)",
+      up: "var(--px-up)",
+      down: "var(--px-down)",
+      "up-soft": "var(--px-up-soft)",
     },
     spacing: {
       0: "0px", px: "1px", 0.5: px(2), 1: px(4), 1.5: px(6), 2: px(8), 3: px(12), 4: px(16), 5: px(20), 6: px(24),
-      7: px(28), 8: px(32), 10: px(40), 12: px(48), 16: px(64), 20: px(80), 32: px(128), 40: px(160),
+      7: px(28), 8: px(32), 9: px(36), 10: px(40), 12: px(48), 16: px(64), 20: px(80), 32: px(128), 40: px(160),
     },
     fontSize: {
       12: [px(12), px(16)], 13: [px(13), px(18)], 14: [px(14), px(20)], 16: [px(16), px(22)],

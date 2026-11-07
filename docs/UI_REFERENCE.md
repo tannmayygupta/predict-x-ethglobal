@@ -2,6 +2,8 @@
 
 Agent A builds from this file. Screen IDs (A1..A6, D1..D3) match `REQUIREMENTS.md` and `TASKS.md`. Wireframes are ASCII; sizes are in px. Tokens are in `packages/shared/src/design-tokens.css`. Copy is exact; do not reword it.
 
+> **2026-11-07:** the palette in section 1 is stale (the build uses the paper theme, D-T8, and a dark lime overlay, D-T11), and A1 and A2 are superseded by the Addendum at the end of this file.
+
 ## 1. Design direction
 
 **Subject:** prediction pools on X, used by crypto traders mid-scroll. The UI must read in two seconds, sit quietly on top of someone else's page, and make one thing memorable.
@@ -48,7 +50,7 @@ Dark only. On X in light mode the card still uses Ink with its border and shadow
 
 | Surface | Mount point | Width | z-index |
 | --- | --- | --- | --- |
-| A1 token card | Floating, anchored below the hovered tag (flip above if no room) | 340 | overlay |
+| A1 token card | Floating, anchored below the hovered tag (flip above if no room) | 480 | overlay |
 | A4 create panel | Fixed, bottom 72, right 20 | 360 | overlay |
 | A5 post step | Replaces the content of A4 | 360 | overlay |
 | A6 bet box | Inserted after the tweet text block | 100% of tweet column, max 520 | in flow |
@@ -61,7 +63,7 @@ All of it lives in one Shadow DOM root per mount point.
 ### A1. Token card (hover on `$ETH`)
 
 ```
-+----------------------------------------------+  340 wide, radius 14
++----------------------------------------------+  480 wide, radius 14
 | Ethereum  ETH                  [ Base ]  [x] |  header, padding 16
 | $2,451.12    v 1.8%  today                   |  price: display 28; change: 13, No color if negative
 | 0x4200...0006  [copy]                        |  address chip, 13, Mute
@@ -382,6 +384,50 @@ Use `packages/shared/src/fixtures.ts`: `marketEth`, `insightEth`, `quoteEthMarke
 - [ ] Contract address and chain are visible before any trade can be signed
 - [ ] Buttons disable while waiting; no double submit
 - [ ] Keyboard focus visible; Escape works on overlays
-- [ ] No horizontal scroll at 340 px (card) and 360 px (panel)
+- [ ] No horizontal scroll with the fluid card (100% wide, max 480 px, down to 373 px) and at 360 px (panel)
 - [ ] The overlay does not change x.com's own layout or styles
 - [ ] The Odds Slip is the only decorative element on the screen
+
+## Addendum A1 (2026-11-07): dark token card, swap and AI states
+
+Supersedes section A1 (and the Swap and Insight parts of A2 and A3 where they differ). The palette table in section 1 is stale: the dashboard uses the paper palette (D-T8) and the extension overlay uses the dark lime theme below (D-T11). Source of truth for values: `packages/shared/src/design-tokens.css`.
+
+### Theme `.px-theme-dark` (extension overlay only)
+
+Applied to the overlay root (hover card, panel, launcher). The dashboard and the BetBox slips stay paper.
+
+| Token | Value |
+| --- | --- |
+| ink / ink-2 / ink-3 | `#000000` / `#18181B` / `#222226` |
+| rule | `#222226` |
+| text / mute | `#FFFFFF` / `#A3A4A7` |
+| amber (accent) / amber-ink | `#B9F302` / `#000000` |
+| yes / no | `#B9F302` / `#FF6B7A` |
+| page | `#000000` |
+| shadow | `0 8px 30px rgba(0,0,0,.6)` |
+| `--px-up`, `--px-down`, `--px-up-soft` | gain, loss, and the soft border of the Verified pill (declared in `:host` and again in the dark scope) |
+
+`.px-tnum` gives tabular figures in Instrument Sans (Fraunces has none). Cashtag underline: cobalt on a light page, lime on a dark page.
+
+### Token card
+
+- Width `min(480px, 100vw - 24px)`, about 454 high, 1 px rule border, `rounded-card`, padding 24.
+- Header (48 px row): token icon 48 with a 20 px chain badge (Base) bottom-right; symbol 16 semibold plus a Verified pill (shield-check icon, 12 medium lime text); second row: name 14 mute, a dot, and "Predict this price" 14 white with a chevron (opens the Predict tab). Top right: PredictX mark, then a 32 px kebab button (`aria-haspopup="menu"`) with Copy contract address, View on BaseScan, Open dashboard. Escape closes the menu before the card.
+- Price block, 32 px below the header: price 28 semibold; under it (4 px) the change line 14 medium, for example "+$10.48 (+0.47%)" in up or down colour, then "24h" in mute. Stats on the right, three right-aligned columns, gap 40: Market cap, Liquidity, 24h volume (compact en-US currency, 2 fraction digits, for example $273.74B). A missing value shows an em dash.
+- Chart: 108 px plot inside the width minus a 74 px right gutter. Stroke 2 px, round joins, no fill, colour by the sign of the 24h change. A dashed 1 px line at the 24h open price with its label in the gutter; a last-price tag in the gutter (lime, black 12 px). Five x labels (12 px mute) on 6-hour UTC boundaries shown in local time, plus "now"; overlapping labels are dropped. Pointer scrub shows a hairline and dot, and the header price and change follow it and restore on leave. Inline SVG, no dependency.
+- Chart states: loading skeleton, empty ("No chart data"), error ("Couldn't load the chart.").
+- Buttons row, 36 px below: "View details" (ink-2, white text 16 medium) opens the Panel on the AI tab; "Swap" (white, ink text) opens the Panel on the Swap tab and is disabled with the title "Swap unavailable for this token" when the token is not Flash-supported. The card closes first. Both 48 px high, fully rounded, gap 16.
+- Icons are bundled inline SVG (ETH, BTC, Base badge, neutral monogram for the rest) because the x.com CSP blocks remote images.
+- Stale-price rule from A1 still holds ("Price delayed").
+
+### Swap (quote only, D-T1)
+
+Market and Limit; amount in USDC (max 5); the live market price from `/market` above the form. Limit: price field, presets -1%, -2%, -5% below market, the live gap "x% below market" or the warning "At or above market: this order would fill at once", and an expiry select (Good till cancelled, 1 hour, 24 hours, 7 days). Market: slippage presets 0.5%, 1%, 3%, 15%, the line "Flash suggests X%" and a hint when the chosen value is lower. The quote shows You spend, You get (about), Rate, Effective price vs market, Network cost (spend minus receive; labelled so it is not read as a PredictX fee), Fees (only when non-zero), Price impact, Minimum received, Slippage, Order expires, token address and chain, steps, a Review only badge, a MOCK badge only for `q_mock_` ids, a 60 s countdown with "Get new quote", and a disabled "Place order" with "Testnet-only build: orders are not sent." Re-quote is explicit. Mapping to Flash fields: `docs/DEFINITIVE.md` section 4.
+
+### AI states
+
+idle (intent field and Get insight), loading, ready (bias and confidence badges, tip, and the limit row "Suggested limit $X (-2.0% vs spot $Y, as of hh:mm)"), degraded (existing notice plus Try again), empty ("No limit suggested right now."), error with separate messages for rate limited, unsupported token, LLM unavailable and network. The result is kept per symbol for 5 minutes, so it survives tab switches.
+
+### New strings (all in `packages/ui/src/copy.ts`)
+
+View details, Swap, Verified, Market cap, Liquidity, 24h volume, Predict this price, Copy contract address, Address copied, Could not copy, View on BaseScan, Open dashboard, No chart data, Couldn't load the chart., Swap unavailable for this token, Market price, below market, At or above market: this order would fill at once, Get new quote, You spend, You get (about), Rate, Effective price vs market, Network cost, Fees, Price impact, Minimum received, Slippage, Quote valid, Order expires, Good till cancelled, Steps, No limit suggested right now., Try again, Too many requests. Wait a minute and try again., No insight is available for this token., Insight is unavailable right now. Try again soon., Couldn't reach the PredictX server.

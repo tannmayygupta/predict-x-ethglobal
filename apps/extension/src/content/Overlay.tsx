@@ -11,11 +11,13 @@ interface PanelState {
   open: boolean;
   tab: PanelTab;
   symbol: string;
+  /** Bumped when the card opens the panel, so any limit suggested earlier is dropped. */
+  fresh: number;
 }
 
 /** Launcher pill (bottom right) that opens the PredictX panel, plus the hover card on cashtags. */
 export function Overlay({ hover }: { hover: HoverStore }) {
-  const [panel, setPanel] = useState<PanelState>({ open: false, tab: "predict", symbol: "" });
+  const [panel, setPanel] = useState<PanelState>({ open: false, tab: "predict", symbol: "", fresh: 0 });
   const [mode, setMode] = useState<PanelMode>(loadMode);
   const hovered = useSyncExternalStore(hover.subscribe, hover.getState, hover.getState);
   const tokens = useSyncExternalStore(tokenStore.subscribe, tokenStore.get, tokenStore.get);
@@ -23,7 +25,11 @@ export function Overlay({ hover }: { hover: HoverStore }) {
 
   const closePanel = (): void => setPanel((p) => ({ ...p, open: false }));
   const openPanel = (tab: PanelTab, symbol?: string): void =>
-    setPanel((p) => ({ open: true, tab, symbol: symbol ?? (p.symbol || tokens[0]?.symbol || "") }));
+    setPanel((p) => ({ open: true, tab, symbol: symbol ?? (p.symbol || tokens[0]?.symbol || ""), fresh: p.fresh }));
+  const openFromCard = (tab: PanelTab, symbol: string): void => {
+    hover.close();
+    setPanel((p) => ({ open: true, tab, symbol, fresh: p.fresh + 1 }));
+  };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -55,15 +61,15 @@ export function Overlay({ hover }: { hover: HoverStore }) {
           token={token}
           anchor={hovered.anchor}
           store={hover}
-          onPredict={(symbol) => {
-            hover.close();
-            openPanel("predict", symbol);
-          }}
+          onSwap={(symbol) => openFromCard("swap", symbol)}
+          onDetails={(symbol) => openFromCard("ai", symbol)}
+          onPredict={(symbol) => openFromCard("predict", symbol)}
         />
       ) : null}
       {panel.open ? (
         tokens.length > 0 ? (
           <Panel
+            key={panel.fresh}
             tokens={tokens}
             tab={panel.tab}
             symbol={panel.symbol || tokens[0]?.symbol || ""}

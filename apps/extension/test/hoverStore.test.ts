@@ -126,3 +126,43 @@ describe("placeCard", () => {
     expect(placeCard(high, { width: 1200, height: 300 }, card).top).toBe(12);
   });
 });
+
+describe("placeCard with the market card size", () => {
+  const card = { width: 480, height: 454 };
+
+  it("flips above the tag when 454 px do not fit below", () => {
+    const low = { left: 100, top: 500, right: 140, bottom: 520 };
+    // 700 px viewport leaves 172 px below the tag.
+    expect(placeCard(low, { width: 1200, height: 700 }, card).top).toBe(500 - 8 - 454);
+  });
+
+  it("stays below when exactly 454 px plus the gap fit", () => {
+    expect(placeCard(anchor, { width: 1200, height: 220 + 8 + 454 + 12 }, card).top).toBe(228);
+  });
+
+  it("keeps the 480 px card inside a narrow viewport", () => {
+    expect(placeCard({ ...anchor, left: 300 }, { width: 600, height: 900 }, { width: 576, height: 454 }).left).toBe(12);
+  });
+});
+
+describe("placeCard in a short viewport", () => {
+  const card = { width: 480, height: 454 };
+
+  it("keeps the whole card inside a 500 px viewport with the anchor mid-screen", () => {
+    const mid = { left: 100, top: 240, right: 140, bottom: 260 };
+    const { top } = placeCard(mid, { width: 1200, height: 500 }, card);
+    expect(top).toBeGreaterThanOrEqual(12);
+    expect(top + 454).toBeLessThanOrEqual(500 - 12);
+  });
+
+  it("picks the side with more room when neither fits", () => {
+    const lowish = { left: 100, top: 300, right: 140, bottom: 320 };
+    // 600 px viewport: 272 px below, 292 px above, so above wins; its top clamps to the margin.
+    expect(placeCard(lowish, { width: 1200, height: 600 }, card).top).toBe(12);
+    const belowWins = { left: 100, top: 100, right: 140, bottom: 120 };
+    // Only 92 px above, 272 below: below wins, then clamps up so the card ends 12 px above the viewport bottom.
+    expect(placeCard(belowWins, { width: 1200, height: 400 }, card).top).toBe(12);
+    const roomy = { left: 100, top: 100, right: 140, bottom: 120 };
+    expect(placeCard(roomy, { width: 1200, height: 560 }, card).top).toBe(560 - 454 - 12);
+  });
+});

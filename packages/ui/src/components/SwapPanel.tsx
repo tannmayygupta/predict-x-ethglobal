@@ -1,20 +1,21 @@
-import { CHAINS, MAX_FLASH_TRADE_USD, toUsdcUnits, type FlashQuoteResponse, type Token } from "@predictx/shared";
+import { MAX_FLASH_TRADE_USD, toUsdcUnits, type FlashQuoteResponse, type Token } from "@predictx/shared";
 import { useEffect, useRef, useState } from "react";
 import type { ApiClientError } from "../api";
 import { useApp } from "../context";
 import { COPY } from "../copy";
 import { useNow, useWallet } from "../react/useExternal";
-import { formatImpact, isMockQuote } from "../view";
-import { Segmented, TextField } from "./forms";
-import { Badge, Button, Notice } from "./primitives";
-import { AddressChip, WalletBar } from "./wallet";
+import { useMarket } from "../react/useMarket";
+import { Button, Notice } from "./primitives";
+import { MarketReference, SwapForm, type OrderType } from "./swap/SwapForm";
+import { QuoteSummary } from "./swap/QuoteSummary";
+import { DEFAULT_SLIPPAGE, expireAtFor, isPositiveDecimal, type ExpiryId } from "./swap/swapMath";
+import { WalletBar } from "./wallet";
 
-type OrderType = "market" | "limit";
 type QuoteState =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "error"; error: ApiClientError }
-  | { kind: "ready"; quote: FlashQuoteResponse };
+  | { kind: "ready"; quote: FlashQuoteResponse; chosenExpireAt: number | null };
 
 const MAX_UNITS = toUsdcUnits(String(MAX_FLASH_TRADE_USD));
 
@@ -32,7 +33,14 @@ function amountError(amount: string): string | null {
 
 function priceError(price: string): string | null {
   if (price.trim() === "") return null;
-  return /^\d+(\.\d+)?$/.test(price) && Number(price) > 0 ? null : "Enter a price above zero.";
+  return isPositiveDecimal(price) ? null : "Enter a price above zero.";
+}
+
+export interface SwapPanelProps {
+  token: Token;
+  initialLimit: string | null;
+  /** Bump this to re-apply the same suggested limit after the user edited the field. */
+  limitNonce?: number;
 }
 
 /**
@@ -40,13 +48,16 @@ function priceError(price: string): string | null {
  * mainnet funds: the tab shows exactly what an order would be, then stops at a disabled button. The wallet is
  * used only for its address; it is never asked to switch to mainnet, approve, or sign here.
  */
-export function SwapPanel({ token, initialLimit }: { token: Token; initialLimit: string | null }) {
+export function SwapPanel({ token, initialLimit, limitNonce = 0 }: SwapPanelProps) {
   const { api, wallet, chain } = useApp();
   const account = useWallet(wallet);
   const now = useNow();
+  const { market } = useMarket(api, token.symbol, now);
   const [amount, setAmount] = useState("");
   const [orderType, setOrderType] = useState<OrderType>(initialLimit ? "limit" : "market");
   const [limitPrice, setLimitPrice] = useState(initialLimit ?? "");
+  const [expiry, setExpiry] = useState<ExpiryId>("gtc");
+  const [slippage, setSlippage] = useState(DEFAULT_SLIPPAGE);
   const [state, setState] = useState<QuoteState>({ kind: "idle" });
   // Each request gets a number. Editing a field bumps it, so an answer to an older request can never overwrite
   // the screen and look like the quote for what is typed now.
@@ -60,17 +71,18 @@ export function SwapPanel({ token, initialLimit }: { token: Token; initialLimit:
     if (!initialLimit) return;
     setOrderType("limit");
     setLimitPrice(initialLimit);
-    latest.current += 1;
-    setState({ kind: "idle" });
-  }, [initialLimit]);
+    reset();
+  }, [initialLimit, limitNonce]);
 
   const aError = amountError(amount);
   const pError = orderType === "limit" ? priceError(limitPrice) : null;
   const ready = amount.trim() !== "" && aError === null && (orderType === "market" || (limitPrice.trim() !== "" && pError === null));
+  const suggested = state.kind === "ready" ? state.quote.recommendedSlippage : null;
 
   const getQuote = (): void => {
     if (!account.address || !ready) return;
     const mine = (latest.current += 1);
+    const chosenExpireAt = orderType === "limit" ? expireAtFor(expiry, Math.floor(Date.now() / 1000)) : null;
     setState({ kind: "loading" });
     api
       .flashQuote({
@@ -80,45 +92,49 @@ export function SwapPanel({ token, initialLimit }: { token: Token; initialLimit:
         orderType,
         amount,
         limitPriceUsd: orderType === "limit" ? limitPrice : null,
+        // Slippage is a market-order setting and expireAt a limit-order one; the contract rejects expireAt on market.
+        ...(orderType === "market" ? { slippage } : {}),
+        ...(chosenExpireAt !== null ? { expireAt: chosenExpireAt } : {}),
       })
-      .then((quote) => { if (mine === latest.current) setState({ kind: "ready", quote }); })
+      .then((quote) => { if (mine === latest.current) setState({ kind: "ready", quote, chosenExpireAt }); })
       .catch((error: ApiClientError) => { if (mine === latest.current) setState({ kind: "error", error }); });
   };
 
   return (
     <div className="flex flex-col gap-3">
       {account.status !== "connected" ? <WalletBar controller={wallet} expectedChainId={chain.chainId} needsChain={false} /> : null}
-      <TextField
-        label="Spend (USDC)"
-        value={amount}
-        onChange={(v) => { setAmount(v); reset(); }}
-        inputMode="decimal"
-        placeholder="2.00"
-        error={aError}
-        suffix={`max ${MAX_FLASH_TRADE_USD.toFixed(2)}`}
+      <MarketReference symbol={token.symbol} price={market?.priceUsd ?? null} />
+      <SwapForm
+        amount={amount}
+        onAmount={(v) => { setAmount(v); reset(); }}
+        amountError={aError}
+        orderType={orderType}
+        onOrderType={(v) => { setOrderType(v); reset(); }}
+        limitPrice={limitPrice}
+        onLimitPrice={(v) => { setLimitPrice(v); reset(); }}
+        limitError={pError}
+        marketPrice={market?.priceUsd ?? null}
+        expiry={expiry}
+        onExpiry={(v) => { setExpiry(v); reset(); }}
+        slippage={slippage}
+        onSlippage={(v) => { setSlippage(v); reset(); }}
+        suggestedSlippage={suggested}
       />
-      <Segmented
-        label="Order type"
-        options={[{ value: "market", label: "Market" }, { value: "limit", label: "Limit" }]}
-        value={orderType}
-        onChange={(v) => { setOrderType(v); reset(); }}
-      />
-      {orderType === "limit" ? (
-        <TextField
-          label={`Buy when price is at or below`}
-          value={limitPrice}
-          onChange={(v) => { setLimitPrice(v); reset(); }}
-          inputMode="decimal"
-          error={pError}
-          suffix="USD"
-        />
-      ) : null}
       <Button loading={state.kind === "loading"} disabled={!ready || account.status !== "connected"} onClick={getQuote}>
         {COPY.get_quote}
       </Button>
 
       {state.kind === "error" ? <QuoteFailure error={state.error} onRetry={getQuote} /> : null}
-      {state.kind === "ready" ? <QuoteSummary quote={state.quote} token={token} now={now} onRefresh={getQuote} /> : null}
+      {state.kind === "ready" ? (
+        <QuoteSummary
+          quote={state.quote}
+          token={token}
+          now={now}
+          chosenExpireAt={state.chosenExpireAt}
+          livePrice={market?.priceUsd ?? null}
+          onRefresh={getQuote}
+        />
+      ) : null}
     </div>
   );
 }
@@ -129,49 +145,5 @@ function QuoteFailure({ error, onRetry }: { error: ApiClientError; onRetry(): vo
     <Notice kind="error" action={<Button size="sm" variant="secondary" onClick={onRetry}>Try again</Button>}>
       {text}
     </Notice>
-  );
-}
-
-function QuoteSummary({ quote, token, now, onRefresh }: { quote: FlashQuoteResponse; token: Token; now: number; onRefresh(): void }) {
-  const left = quote.expiresAt - now;
-  const expired = left <= 0;
-  const steps = [quote.steps.approveTx ? "Approve" : null, quote.steps.permitTypedData ? "Permit" : null, "Sign", "Place"].filter((s): s is string => s !== null);
-  return (
-    <div className="flex flex-col gap-3 border-t border-rule pt-3">
-      <div className="flex items-center justify-between">
-        <span className="text-13 text-mute">You spend</span>
-        <span className="font-display text-14 font-semibold">{quote.spend.amount} {quote.spend.symbol}</span>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-13 text-mute">You get</span>
-        <span className="font-display text-20 font-semibold">about {quote.receive.amount} {quote.receive.symbol}</span>
-      </div>
-      <div className="flex items-center justify-between text-13 text-mute">
-        <span>Fees ${quote.feesUsd}</span>
-        {quote.estimatedPriceImpact ? <span>Price impact {formatImpact(quote.estimatedPriceImpact)}</span> : null}
-      </div>
-      {token.address ? (
-        <div className="flex items-center gap-2 text-13 text-mute">
-          <span>Token {token.symbol}</span>
-          <AddressChip address={token.address} explorer={CHAINS.BASE_MAINNET.explorer} />
-          <span>on {CHAINS.BASE_MAINNET.name}</span>
-        </div>
-      ) : null}
-      <div className="flex items-center gap-2 text-12 text-mute">
-        <span>Steps</span>
-        {steps.map((s, i) => <span key={s}>({i + 1}) {s}</span>)}
-        <Badge tone="amber">{COPY.review_only}</Badge>
-        {isMockQuote(quote.quoteId) ? <Badge tone="amber">{COPY.mock_badge}</Badge> : null}
-      </div>
-      {expired ? (
-        <Notice kind="warn" action={<Button size="sm" variant="secondary" onClick={onRefresh}>{COPY.get_quote}</Button>}>
-          {COPY.quote_expired}
-        </Notice>
-      ) : (
-        <span className="text-12 text-mute">Quote valid for {left}s</span>
-      )}
-      <Button disabled>{COPY.place_order}</Button>
-      <Notice kind="info">{COPY.orders_off}</Notice>
-    </div>
   );
 }

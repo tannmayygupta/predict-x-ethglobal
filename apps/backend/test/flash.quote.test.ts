@@ -116,7 +116,7 @@ describe("B04-05 side is a schema literal", () => {
 describe("B04-06 only Flash-tradable allowlist tokens are quoted", () => {
   it.each([
     ["DOGE", "not in the allowlist"],
-    ["BTC", "listed but flashSupported: false"],
+    ["PEPE", "listed but flashSupported: false"],
     ["pepe", "lower-case lookup of a non-Flash token"],
   ])("%s (%s) returns 400 UNSUPPORTED_TOKEN without calling Flash", async (symbol) => {
     const { app, flash } = await build();

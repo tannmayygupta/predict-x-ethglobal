@@ -58,6 +58,7 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 - do: script `scripts/gate0-flash.ts` that, with a funded Base wallet, requests a Flash quote (buy ETH with USDC, limit order, at most $5), handles `approveTx` and signatures, submits, then polls. Write `docs/GATE0.md`: working request and response shapes, order status values, token addresses, whether an approve is needed, quote lifetime, any surprise.
 - done when: Flash accepted the order (status `open` or `filled`) and `docs/GATE0.md` exists. If it fails, write a blocker `Flash gate failed` and stop all Flash tasks.
 - note: needs `FLASH_API_KEY` and a funded wallet from a human. Write a blocker if missing.
+- note (2026-11-07): `docs/GATE0.md` does not exist. This task would place a real mainnet order, which conflicts with D-T1 (quote-only build), so it stays blocked and no agent runs the script. See docs/DEFINITIVE.md section 9 for what must be true first.
 
 ## Part A: extension and dashboard (Agent A)
 
@@ -87,6 +88,7 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 - owner: A | status: doing | deps: T-A04 | reqs: FR-X-02, FR-X-03 | read: UI_REFERENCE A1
 - done when: header shows market data from `/market/:symbol`, address copy works, tabs switch, loading, error and stale states are reachable via the mock.
 - note (2026-10-29 audit): legacy card is a static stub with hardcoded prices; roughly 5% reusable. Rebuild against `/market/:symbol`.
+- note (2026-11-07): rebuilt as the dark token card of UI_REFERENCE Addendum A1 (`packages/ui/src/components/market/`): stats, 24h chart, Verified pill, kebab menu, View details and Swap buttons. Unit and render tests pass in jsdom per the UI agent; not checked in a browser on x.com, so the status stays `doing`.
 
 ### T-A06 Swap tab: market order (A2)
 - testnet build (D-T1): quote-only; orders are never sent, so "reaches Filled" is replaced by "shows a real Flash quote and stops at Review only"
@@ -94,14 +96,17 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 - do: form, quote summary, stepper, approve then sign then submit then poll, filled state, error states. Typed data passes through unchanged.
 - done when: against the mock the full flow reaches Filled; with the real backend (later) a $1-5 order fills.
 - note (2026-10-29 audit): legacy "Set Trade" UI is a static preview with a fake wallet picker; no viem, no quote call. Rebuild.
+- note (2026-11-07): quote screen extended with spend, receive, rate, effective price vs market, network cost, minimum received, slippage presets, Flash's suggestion, order expiry, 60 s countdown (docs/DEFINITIVE.md section 4). Render tests pass; not checked against a live Flash quote in a browser, so the status stays `doing`.
 
 ### T-A07 Swap tab: limit order
 - owner: A | status: doing | deps: T-A06 | reqs: FR-S-03
 - done when: Limit option sends `limitPriceUsd`; `open` status shows "Waiting for price".
+- note (2026-11-07): limit price presets, live gap and the at-or-above-market warning, expiry select sending `expireAt`. Quote-only. Same unchecked-in-browser caveat.
 
 ### T-A08 Insight tab (A3)
 - owner: A | status: doing | deps: T-A07 | reqs: FR-I-01, FR-I-02, FR-I-03
 - done when: tip, badges, degraded notice, and "Use suggested limit" filling the Limit tab all work in the mock.
+- note (2026-11-07): states idle, loading, ready, degraded, empty and error; limit row against spot with time; result cached 5 min per symbol; "Use suggested limit" re-applies on a repeated press. Render tests pass; real tips need a working OpenAI key and were not re-verified here.
 
 ### T-A09 Create panel and launcher (A4)
 - owner: A | status: doing | deps: T-A03, T-002 | reqs: FR-P-01, FR-P-02
@@ -150,8 +155,9 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 
 ### T-B02 Tokens and market endpoints
 - owner: B | status: done | deps: T-B01 | reqs: FR-B-01
-- do: `GET /tokens` from `tokens.json`; `GET /market/:symbol` from CoinGecko `simple/price` (price and 24h change), 30 s memory cache, `UNSUPPORTED_TOKEN` for unknown symbols.
+- do: `GET /tokens` from `tokens.json`; `GET /market/:symbol` from CoinGecko batched `/coins/markets` (price and 24h change), 60 s memory cache, `UNSUPPORTED_TOKEN` for unknown symbols.
 - done when: both endpoints parse with their schemas; tests cover happy and unsupported paths.
+- note (2026-11-07): contract change B-006: `/market/:symbol` now carries change in USD, cap, volume, high, low, liquidity and `verified` from one batched CoinGecko call; new `GET /market/:symbol/chart`. `tokens.json` gained BTC (cbBTC), DEGEN and BRETT as Flash-supported. The backend agent reported typecheck clean and 593 passing tests (1 skipped) and a live smoke on its own port; the whole-repo run was not repeated by the docs step.
 
 ### T-B03 Flash client with mock mode
 - owner: B | status: done | deps: T-B01 | reqs: FR-B-02, FR-S-07
@@ -162,11 +168,13 @@ Pick the first `todo` task for your role whose `deps` are all `done` (see `AGENT
 - owner: B | status: doing | deps: T-B03, T-003 | reqs: FR-B-02, FR-S-04  (mock mode complete; real-mode done-when waits on T-003, see B-002)
 - do: `POST /flash/quote` (validate, enforce `MAX_FLASH_TRADE_USD`, store quote), `POST /flash/order` (look up quote, `QUOTE_EXPIRED` if past `expiresAt`, submit, store order), `GET /flash/order/:orderId`. Typed data strings pass through unchanged. Use the shapes recorded in `docs/GATE0.md`.
 - done when: a real $1-5 limit order goes through the backend end to end and the status is returned in our shape.
+- note (2026-11-07): quotes now carry the nine swap factors and accept `expireAt` (limit only) and slippage in (0,1]. Real quotes verified live by the backend agent. Order and status paths remain disabled by `FLASH_ORDERS_ENABLED=false` (D-T1), so the real-mode done-when (a real order) stays open.
 
 ### T-B05 Insight endpoint (OpenAI)
 - owner: B | status: done | deps: T-B02 | reqs: FR-B-03, FR-I-03, FR-I-04
 - do: build input (symbol, price, 24h and 7d change, optional `userIntent`); one OpenAI call with Structured Outputs; validate with `InsightResponse`; clamp `suggestedLimit` to within 15% of spot; one retry; static fallback with `degraded: true`; 5-minute cache; 300 max output tokens. No tweet text, no tools.
 - done when: a real call works; with an invalid key the endpoint still returns 200 and `degraded: true`.
+- note (2026-11-07): prompt enriched with CoinGecko facts; response carries `spotUsd` and `asOf`; one retry only for transient errors, 5 s timeout; still no Flash import (FR-I-04).
 
 ### T-B06 PredictionPool contract and tests
 - owner: B | status: done | deps: T-002 | reqs: FR-C-01 to FR-C-08

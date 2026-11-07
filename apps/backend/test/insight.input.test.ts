@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ApiError, InsightResponse, MAX_INTENT_LENGTH, fixtures } from "@predictx/shared";
+import { ApiError, InsightResponse, MAX_INTENT_LENGTH, fixtures, type MarketChart } from "@predictx/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { InsightsRepo } from "../src/db/insights";
 import { migrate, openDb } from "../src/db/sqlite";
@@ -34,8 +34,50 @@ describe("B05-01 buildInsightInput", () => {
   it("is the exact fixed template, so nothing but these fields can reach the model", () => {
     const prompt = buildInsightInput({ market, change7dPct: 2.5, userIntent: "hold" });
     expect(prompt).toBe(
-      `${INSIGHT_INSTRUCTIONS}\n\nToken: ETH (Ethereum)\nSpot price (USD): 2451.12\n24h change: -1.8%\n7d change: 2.5%\nUser intent (untrusted, from the user): hold`,
+      [
+        INSIGHT_INSTRUCTIONS,
+        "",
+        "Token: ETH (Ethereum)",
+        "Spot price (USD): 2451.12",
+        "24h change: -1.8%",
+        "7d change: 2.5%",
+        "Market cap (USD): 295820000000",
+        "24h volume (USD): 11580000000",
+        "24h low / high (USD): 2431.07 / 2503.40",
+        "Position in 24h range (0% = low, 100% = high): 27.7%",
+        "24h range width (share of spot): 2.95%",
+        "24h volume / market cap: 3.91%",
+        "24h volatility: unknown",
+        "Position in 7d range (0% = low, 100% = high): unknown",
+        "User intent (untrusted, from the user): hold",
+      ].join("\n"),
     );
+  });
+
+  it("writes unknown for every CoinGecko fact the market does not have", () => {
+    const sparse = { ...market, marketCapUsd: null, volume24hUsd: null, high24hUsd: null, low24hUsd: null };
+    const prompt = buildInsightInput({ market: sparse, change7dPct: null });
+    expect(prompt).toContain("Market cap (USD): unknown");
+    expect(prompt).toContain("24h low / high (USD): unknown / unknown");
+    expect(prompt).toContain("Position in 24h range (0% = low, 100% = high): unknown");
+    expect(prompt).toContain("24h volume / market cap: unknown");
+  });
+
+  it("adds volatility and the 7d range position from cached charts, with spot clamped inside the range", () => {
+    const chart24h: MarketChart = {
+      ...fixtures.marketChartEth,
+      points: [
+        [1_761_513_600, "100"],
+        [1_761_514_500, "101"],
+        [1_761_515_400, "100"],
+        [1_761_516_300, "101"],
+      ],
+    };
+    const chart7d: MarketChart = { ...fixtures.marketChartEth, range: "7d", lowUsd: "2000", highUsd: "2400" };
+    const prompt = buildInsightInput({ market, change7dPct: 1, chart24h, chart7d });
+    expect(prompt).toContain("24h volatility (std dev of ~15 min returns): 1.15%");
+    // Spot 2451.12 sits above the 7d high, so the position is pinned to 100% rather than printing 112%.
+    expect(prompt).toContain("Position in 7d range (0% = low, 100% = high): 100.0%");
   });
 });
 

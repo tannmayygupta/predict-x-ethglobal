@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { CardPreview } from "../playground/CardPreview";
 import { ChecksStrip } from "../playground/ChecksStrip";
 import { ENDPOINTS, type Endpoint, type HttpMethod } from "../playground/endpoints";
 import { sendRequest, type RequestResult } from "../playground/http";
@@ -44,6 +45,7 @@ export function Playground() {
         </div>
         <span className="max-w-full break-all rounded-full border border-rule px-3 py-1.5 text-12 text-mute" style={MONO} title="API base URL">{apiBaseUrl}</span>
       </div>
+      <CardPreview />
       <ChecksStrip run={run} />
       <div className="grid grid-cols-1 items-start gap-6 min-[1000px]:grid-cols-[280px_minmax(0,1fr)]">
         <EndpointList selectedId={endpoint.id} onSelect={setEndpoint} />

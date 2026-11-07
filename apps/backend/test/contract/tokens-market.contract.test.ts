@@ -1,8 +1,8 @@
-import { ApiError, Market, TokensResponse } from "@predictx/shared";
+import { ApiError, Market, MarketChart, TokensResponse } from "@predictx/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { PriceSourceError } from "../../src/clients/priceSource";
 import { buildTestApp } from "../helpers/build";
-import { FakePriceSource } from "../helpers/fakes/priceSource";
+import { FakePriceSource, series } from "../helpers/fakes/priceSource";
 
 /**
  * T-B02's rows of the FR-B-01 contract table (B04-29): the canonical request for each endpoint
@@ -68,6 +68,36 @@ const errorRows: ErrorRow[] = [
 describe("B04-30 error codes reachable through T-B02 endpoints parse with ApiError (FR-B-07)", () => {
   it.each(errorRows)("$code via $url", async ({ code, status, url, priceSource }) => {
     built = await buildTestApp({ priceSource: priceSource ?? pricedSource() });
+    const res = await built.app.inject({ method: "GET", url });
+    expect(res.statusCode).toBe(status);
+    expect(ApiError.parse(res.json()).error.code).toBe(code);
+  });
+});
+
+describe("FR-B-01 market and chart rows: every new key is emitted, not left to schema defaults", () => {
+  const NEW_MARKET_KEYS = ["change24hUsd", "marketCapUsd", "volume24hUsd", "high24hUsd", "low24hUsd", "liquidityUsd", "verified"];
+
+  it("GET /market/:symbol carries all seven new keys even when CoinGecko knows nothing beyond the price", async () => {
+    built = await buildTestApp({ priceSource: pricedSource() });
+    const body: Record<string, unknown> = (await built.app.inject({ method: "GET", url: "/api/v1/market/ETH" })).json();
+    for (const key of NEW_MARKET_KEYS) expect(body, key).toHaveProperty(key);
+  });
+
+  it("GET /market/:symbol/chart returns 200 and parses with MarketChart", async () => {
+    const source = pricedSource();
+    source.charts["ethereum:1"] = series([2450, 2460, 2440, 2451.12]);
+    built = await buildTestApp({ priceSource: source });
+    const res = await built.app.inject({ method: "GET", url: "/api/v1/market/ETH/chart?range=24h" });
+    expect(res.statusCode).toBe(200);
+    expect(() => MarketChart.parse(res.json())).not.toThrow();
+  });
+
+  it.each([
+    ["BAD_REQUEST", 400, "/api/v1/market/ETH/chart?range=1y"],
+    ["UNSUPPORTED_TOKEN", 400, "/api/v1/market/DOGE/chart"],
+    ["INTERNAL", 502, "/api/v1/market/ETH/chart"],
+  ])("%s (%s) via %s parses with ApiError", async (code, status, url) => {
+    built = await buildTestApp({ priceSource: pricedSource() });
     const res = await built.app.inject({ method: "GET", url });
     expect(res.statusCode).toBe(status);
     expect(ApiError.parse(res.json()).error.code).toBe(code);

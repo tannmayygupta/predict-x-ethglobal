@@ -1,6 +1,6 @@
 # PredictX project tracker
 
-Last updated: **2026-11-04**. Status values mirror [`TASKS.md`](TASKS.md), which holds each task's full spec and acceptance check. When a task changes, update both files in the same commit.
+Last updated: **2026-11-07**. Status values mirror [`TASKS.md`](TASKS.md), which holds each task's full spec and acceptance check. When a task changes, update both files in the same commit.
 
 ## Where we are
 
@@ -46,10 +46,10 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked on a human input · ⬜ not 
 | T-A02 | Mock API server from shared fixtures | dropped | - | | Decision D-T4: real backend, nothing mocked |
 | T-A03 | Wallet bridge (MetaMask on x.com) | 🟡 | 85 | | Bridge + controller built and tested; hand check pending |
 | T-A04 | Detect `$CASHTAG` and hover trigger | 🟡 | 80 | | Detector + hover built and tested; X page check pending |
-| T-A05 | Token card (price, address, tabs) | 🟡 | 80 | | Card built against /market; browser check pending |
-| T-A06 | Swap tab: market order | 🟡 | 70 | | Quote-only by design (D-T1); needs a Flash key to see real quotes |
+| T-A05 | Token card (price, address, tabs) | 🟡 | 80 | | Dark card with stats and 24h chart built (Addendum A1); browser check on x.com pending |
+| T-A06 | Swap tab: market order | 🟡 | 70 | | Quote-only by design (D-T1); full quote rows built, see docs/DEFINITIVE.md; browser check pending |
 | T-A07 | Swap tab: limit order | 🟡 | 70 | | Limit quote built; same key needed |
-| T-A08 | Insight tab | 🟡 | 80 | | Insight built; real tips need an OpenAI key |
+| T-A08 | Insight tab | 🟡 | 80 | | All states built; real tips need a working OpenAI key (B-007 for the hosted deploy) |
 | T-A09 | Create pool panel and launcher | 🟡 | 80 | | Form + preview + createPool built; args verified against the live contract by simulation; a funded wallet run is pending |
 | T-A10 | Post pool to X | 🟡 | 80 | | Post step built (x.com/intent/post) |
 | T-A14 | Bet box under tweets | 🟡 | 80 | | Box observer + shared slip built and tested; needs a post on x.com to check |
@@ -77,6 +77,10 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked on a human input · ⬜ not 
 | T-I02 | Rehearse the 3-minute demo twice | ⬜ | 0 | | T-I01 |
 | T-I03 | Record and post the demo | ⬜ | 0 | | T-I02 |
 
+## Added 2026-11-07
+
+New docs: [DEFINITIVE.md](DEFINITIVE.md) (every Flash touchpoint, quote data flow, how to enable orders later) and [APIS.md](APIS.md) (every external API). New decisions D-T11 to D-T16. New blockers B-007 (Vercel secrets), B-008 (Flash search), B-009 (port 8787 shadowed). Contract change B-006 (market stats, chart, quote factors) landed in code and docs; nothing in it has been checked in a browser yet.
+
 ## Next up (critical path)
 
 1. **T-A01 and T-A02 in parallel.** Both are unblocked and unlock every other frontend task.
@@ -92,6 +96,8 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked on a human input · ⬜ not 
 | Base mainnet wallet with about 2 USDC and a little ETH | T-003 real order | A few dollars, optional |
 | Railway or Render account | T-B10 hosting | Free tier, optional |
 | Decision on blocker B-005 | Consistent pool previews | None |
+| Re-add `OPENAI_API_KEY`, `FLASH_API_KEY`, `COINGECKO_API_KEY` in Vercel and redeploy (B-007) | Real quotes and AI on the hosted deploy | Free |
+| Ask Definitive to enable `GET /search` (B-008) | Flash-side token search (optional) | None |
 
 ## Proof it works (Base Sepolia)
 
@@ -108,8 +114,9 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked on a human input · ⬜ not 
 
 | Suite | Command | Result |
 | --- | --- | --- |
-| Shared package | `pnpm --filter @predictx/shared test` | 7 passing |
-| Backend | `pnpm --filter @predictx/backend test` | 473 passing, 98.8% line coverage |
+| Shared package | `pnpm --filter @predictx/shared test` | 8 passing at the 2026-11-06 worklog entry; the Contract agent added tests on 2026-11-07, count not re-run by the docs step |
+| Backend | `pnpm --filter @predictx/backend test` | 593 passing, 1 skipped (backend agent report, 2026-11-07; not re-run by the docs step) |
+| Shared UI | `pnpm --filter @predictx/ui test` | 122 passing in 14 files (UI agent report, 2026-11-07; not re-run by the docs step) |
 | Backend live checks | `pnpm --filter @predictx/backend test:live` | OpenAI and Base Sepolia pass; Flash skipped until a key is added |
 | Contracts | `cd contracts && forge test` | 49 passing, 100% line coverage on PredictionPool |
 | Chainlink workflow | `cd cre/resolve-pools && bun test` | 37 passing |

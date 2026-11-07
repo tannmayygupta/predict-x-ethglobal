@@ -13,6 +13,10 @@
   --px-yes: #1C7C54;
   --px-no: #C2362B;
   --px-page: #F3EEE3;       /* page background (warm cream) */
+  /* price direction. Separate from yes/no so a theme can recolour bet sides without touching charts. */
+  --px-up: #1C7C54;
+  --px-down: #C2362B;
+  --px-up-soft: #A9D7C0;    /* border of the Verified pill */
 
   /* type */
   --px-font-display: "Fraunces Variable", "Fraunces", Georgia, serif;
@@ -39,6 +43,30 @@
 @media (prefers-reduced-motion: reduce) {
   :root, :host { --px-t-fast: 0ms; --px-t-card: 0ms; }
 }
+
+/* Dark lime theme for the extension overlay only (hover card, Panel, launcher). The dashboard stays paper and
+   BetBox slips opt out by keeping the default tokens. Every token is redeclared with a literal: var() aliasing
+   inside a scope would resolve against the outer value. */
+.px-theme-dark {
+  --px-ink: #000000;
+  --px-ink-2: #18181B;
+  --px-ink-3: #222226;
+  --px-rule: #222226;
+  --px-text: #FFFFFF;
+  --px-mute: #A3A4A7;
+  --px-amber: #B9F302;
+  --px-amber-ink: #000000;
+  --px-yes: #B9F302;
+  --px-no: #FF6B7A;
+  --px-page: #000000;
+  --px-up: #B9F302;
+  --px-down: #FF6B7A;
+  --px-up-soft: rgba(185, 243, 2, 0.32);
+  --px-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* Tabular figures need Instrument Sans: Fraunces has none, and the Tailwind utility is inert in the overlay. */
+.px-tnum { font-family: var(--px-font-body); font-variant-numeric: tabular-nums; }
 
 .px-num { font-family: var(--px-font-display); font-variant-numeric: tabular-nums; }
 

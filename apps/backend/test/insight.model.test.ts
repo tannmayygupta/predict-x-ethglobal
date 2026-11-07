@@ -5,7 +5,7 @@ import { OPENAI_TIMEOUT_MS, OpenAiInsightModel } from "../src/clients/openai";
 import { PriceSourceError } from "../src/clients/priceSource";
 import { INSIGHT_MAX_OUTPUT_TOKENS, fallbackInsight } from "../src/services/insight";
 import { insightJsonSchema } from "../src/services/insight.schema";
-import { SPOT_TTL_SECONDS } from "../src/services/market";
+import { MARKET_TTL_SECONDS } from "../src/services/market";
 import { buildTestApp } from "./helpers/build";
 import { FakeInsightModel } from "./helpers/fakes/insightModel";
 import { FakePriceSource } from "./helpers/fakes/priceSource";
@@ -26,7 +26,7 @@ const DRAFT_REPLY = {
   confidence: "low",
   suggestedLimit: { side: "buy", priceUsd: "2380.00", reason: "About 3% below spot" },
 };
-const SERVICE_OWNED_FIELDS = ["symbol", "degraded", "disclaimer"];
+const SERVICE_OWNED_FIELDS = ["symbol", "degraded", "disclaimer", "spotUsd", "asOf"];
 
 function pricedSource(usd = 2451.12, usd24hChange = -1.8): FakePriceSource {
   const source = new FakePriceSource();
@@ -70,7 +70,7 @@ function adapter(fetchImpl: typeof fetch, apiKey = "sk-test-key"): OpenAiInsight
 }
 
 describe("B05-04 one model call with max_output_tokens 300 and the schema derived from InsightResponse", () => {
-  it("the service calls the model once with maxOutputTokens 300 and a strict schema minus symbol, degraded, disclaimer", async () => {
+  it("the service calls the model once with maxOutputTokens 300 and a strict schema minus symbol, degraded, disclaimer, spotUsd, asOf", async () => {
     const insightModel = new FakeInsightModel();
     insightModel.queue(DRAFT_REPLY);
     built = await buildTestApp({ insightModel, priceSource: pricedSource() });
@@ -113,9 +113,10 @@ describe("B05-05 a valid model reply", () => {
     insightModel.queue(DRAFT_REPLY);
     built = await buildTestApp({ insightModel, priceSource: pricedSource() });
     const res = await postInsight(built.app, { symbol: "eth", userIntent: "I want to buy on a dip" });
-    expect(res.statusCode).toBe(200);
     const body = InsightResponse.parse(res.json());
-    expect(body).toEqual({ symbol: "ETH", ...DRAFT_REPLY, degraded: false, disclaimer: "Not financial advice." });
+    // spotUsd and asOf are filled by the service from the market data, never by the model.
+    const owned = { degraded: false, disclaimer: "Not financial advice.", spotUsd: "2451.12", asOf: built.clock.now() };
+    expect(body).toEqual({ symbol: "ETH", ...DRAFT_REPLY, ...owned });
   });
 });
 
@@ -160,7 +161,7 @@ describe("B05-07 the model throws (network, 401 bad key, 429)", () => {
     expect(insightModel.calls).toHaveLength(2);
   });
 
-  it("an invalid key through the real adapter: 401 twice (the SDK itself never retries), 200 degraded, key absent from logs", async () => {
+  it("an invalid key through the real adapter: one 401 and no retry (it would fail again), 200 degraded, key absent from logs", async () => {
     const { calls, fetchImpl } = openaiFetch(() => ({ status: 401, body: AUTH_ERROR }));
     const logs = new LogCapture();
     const secret = "sk-this-key-is-invalid";
@@ -168,7 +169,7 @@ describe("B05-07 the model throws (network, 401 bad key, 429)", () => {
     const res = await postInsight(built.app);
     expect(res.statusCode).toBe(200);
     expect(InsightResponse.parse(res.json()).degraded).toBe(true);
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(1);
     expect(logs.text()).not.toContain(secret);
     expect(logs.text()).toContain("401");
   });
@@ -216,7 +217,7 @@ function hangingFetch() {
 }
 
 describe("B05-08 a model call that hangs", () => {
-  it("is aborted by the adapter after OPENAI_TIMEOUT_MS (8 s) and surfaces as InsightModelError, not earlier", async () => {
+  it("is aborted by the adapter after OPENAI_TIMEOUT_MS (9 s) and surfaces as InsightModelError, not earlier", async () => {
     vi.useFakeTimers();
     const { fetchImpl, abortedCount } = hangingFetch();
     let settled: string | undefined;
@@ -230,20 +231,19 @@ describe("B05-08 a model call that hangs", () => {
     await pending;
     expect(abortedCount()).toBe(1);
     expect(settled).toBe(`openai request timed out after ${OPENAI_TIMEOUT_MS} ms`);
-    expect(OPENAI_TIMEOUT_MS).toBe(8_000);
+    expect(OPENAI_TIMEOUT_MS).toBe(9_000);
   });
 
-  it("counts as a failed attempt end to end: two hung attempts and the route still answers 200 degraded", async () => {
+  it("counts as a failed attempt end to end: a timeout is not retried and the route answers 200 degraded", async () => {
     vi.useFakeTimers();
     const { fetchImpl, abortedCount } = hangingFetch();
     built = await buildTestApp({ insightModel: adapter(fetchImpl), priceSource: pricedSource() });
     const pending = postInsight(built.app);
     await vi.advanceTimersByTimeAsync(OPENAI_TIMEOUT_MS);
-    await vi.advanceTimersByTimeAsync(OPENAI_TIMEOUT_MS);
     const res = await pending;
     expect(res.statusCode).toBe(200);
     expect(InsightResponse.parse(res.json()).degraded).toBe(true);
-    expect(abortedCount()).toBe(2);
+    expect(abortedCount()).toBe(1);
   });
 });
 
@@ -291,7 +291,7 @@ describe("B05-10 LLM_UNAVAILABLE only when the fallback cannot be built", () => 
     const insightModel = new FakeInsightModel();
     built = await buildTestApp({ insightModel, priceSource });
     await built.app.inject({ method: "GET", url: "/api/v1/market/ETH" });
-    built.clock.advance(SPOT_TTL_SECONDS + 1);
+    built.clock.advance(MARKET_TTL_SECONDS + 1);
     priceSource.failWith = new PriceSourceError("coingecko 500", 500);
     const res = await postInsight(built.app);
     expect(res.statusCode).toBe(200);

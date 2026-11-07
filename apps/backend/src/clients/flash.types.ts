@@ -88,6 +88,8 @@ export interface FlashQuoteBody {
   funderAddress: string;
   maxSlippage?: string;
   limitNotionalPrice?: string;
+  /** ISO time; limit orders only, because Flash answers 400 when a market order carries it. */
+  expireTime?: string;
 }
 
 /** Body of POST /v1/order: the full quote body resent plus the signed payload (notes section 4.1). */
@@ -109,10 +111,11 @@ export interface StoredFlashQuote {
 /** POST /v1/quote response, only the keys we read; zod strips the rest (notes section 3.2). */
 export const RawFlashQuote = z.object({
   quoteId: z.string(),
-  from: z.object({ amount: z.string() }),
-  to: z.object({ amount: z.string() }),
+  from: z.object({ amount: z.string(), notional: z.string().nullable().optional() }),
+  to: z.object({ amount: z.string(), notional: z.string().nullable().optional() }),
   fees: z.object({ estimatedFeeNotional: z.string() }),
   estimatedPriceImpact: z.string().nullable(),
+  recommendedSlippage: z.string().nullable().optional(),
   evm: z
     .object({
       approveTx: z.object({ to: z.string(), data: z.string() }).nullable(),

@@ -1,12 +1,16 @@
 import { fileURLToPath } from "node:url";
 import { defineManifest } from "@crxjs/vite-plugin";
 import { loadEnv } from "vite";
+// Relative on purpose: Vite runs this file in plain Node while it loads the config, and Node cannot import the
+// TypeScript source of the @predictx/shared workspace package. A relative import is bundled by esbuild instead.
+import { DEPLOYED_API_BASE_URL } from "../../../packages/shared/src/constants";
 
 const X_MATCHES = ["https://x.com/*", "https://twitter.com/*"];
 
 export default defineManifest(({ mode }) => {
   const env = loadEnv(mode, fileURLToPath(new URL("../../..", import.meta.url)), "VITE_");
-  const apiOrigin = new URL(env.VITE_API_BASE_URL ?? "http://localhost:8787/api/v1").origin;
+  // Same variable and same fallback as src/config.ts, so the host permission always matches the URL the worker calls.
+  const apiOrigin = new URL(env.VITE_EXTENSION_API_BASE_URL?.trim() || DEPLOYED_API_BASE_URL).origin;
   return {
     manifest_version: 3,
     name: "PredictX",

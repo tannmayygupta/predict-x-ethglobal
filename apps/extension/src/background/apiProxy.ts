@@ -8,7 +8,7 @@ export const MAX_CACHED_URLS = 200;
 const ALLOWED_METHODS: ReadonlySet<string> = new Set(["GET", "POST"]);
 
 export interface ApiProxyOptions {
-  /** The only place this proxy will ever call, for example http://localhost:8787/api/v1. */
+  /** The only place this proxy will ever call, for example https://example.test/api/v1. */
   baseUrl: string;
   fetchImpl: typeof fetch;
   now?: () => number;

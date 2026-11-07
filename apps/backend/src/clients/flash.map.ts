@@ -20,9 +20,14 @@ import {
   type StoredFlashQuote,
 } from "./flash.types";
 import { numberToDecimalString } from "../util/decimal";
+import { clampDecimals } from "./flash.decimal";
+import { USDC_DECIMALS, deriveQuoteFactors } from "./flash.factors";
 
 /** The MVP spends USDC only (D-002); Flash reports the spent leg as `from` without a symbol. */
 const SPEND_SYMBOL = "USDC";
+const MS_PER_SECOND = 1000;
+/** Allowlist tokens that Flash trades all carry decimals; this only satisfies the nullable type. */
+const DEFAULT_TOKEN_DECIMALS = 18;
 
 /** Our /flash/quote request to Flash's POST /quote body (API_CONTRACT section 6, corrected by docs/notes). */
 export function toFlashQuoteBody(request: FlashQuoteRequest, token: Token): FlashQuoteBody {
@@ -44,6 +49,10 @@ export function toFlashQuoteBody(request: FlashQuoteRequest, token: Token): Flas
   // "only market rejects a limit price outright", so each key is sent for exactly one order type.
   if (request.orderType === "market") body.maxSlippage = request.slippage;
   if (request.orderType === "limit" && request.limitPriceUsd) body.limitNotionalPrice = request.limitPriceUsd;
+  // expireTime is limit-only for the same reason; the service has already checked the window.
+  if (request.orderType === "limit" && request.expireAt != null) {
+    body.expireTime = new Date(request.expireAt * MS_PER_SECOND).toISOString();
+  }
   return body;
 }
 
@@ -65,6 +74,34 @@ export function plainPriceImpact(value: string | null): string | null {
   return n <= 0 ? "0" : numberToDecimalString(n);
 }
 
+const EXPONENT_FORM = /^(\d+)(?:\.(\d+))?[eE]([+-]?\d+)$/;
+
+/**
+ * Flash may print a tiny amount as "1e-7". The digits are shifted as text, so the value stays exact and never
+ * passes through a float; anything that is neither plain nor exponent form is left for the caller to reject.
+ */
+function expandExponent(value: string): string {
+  const match = EXPONENT_FORM.exec(value);
+  if (!match) return value;
+  const whole = match[1] ?? "0";
+  const fraction = match[2] ?? "";
+  const exponent = Number(match[3]);
+  const digits = whole + fraction;
+  const pointIndex = whole.length + exponent;
+  if (pointIndex <= 0) return `0.${"0".repeat(-pointIndex)}${digits}`;
+  if (pointIndex >= digits.length) return digits + "0".repeat(pointIndex - digits.length);
+  return `${digits.slice(0, pointIndex)}.${digits.slice(pointIndex)}`;
+}
+
+/** Flash prints amounts with 36+ decimals; a token has its own, and the contract stores what a wallet can use. */
+function clampAmount(value: string, decimals: number): string {
+  try {
+    return clampDecimals(expandExponent(value), decimals);
+  } catch {
+    throw new FlashError("flash quote has an unreadable amount");
+  }
+}
+
 /** Flash's quote response into our FlashQuoteResponse; typed-data strings pass through untouched (RULES 4.4). */
 export function fromFlashQuote(raw: RawFlashQuote, input: FlashQuoteInput, now: number): FlashQuoteResponse {
   const orderTypedData = presentOrNull(raw.evm?.orderTypedData);
@@ -72,6 +109,9 @@ export function fromFlashQuote(raw: RawFlashQuote, input: FlashQuoteInput, now: 
     // Flash returns an empty payload when funderAddress was omitted; without it nothing can be signed.
     throw new FlashError("flash quote has no orderTypedData");
   }
+  const tokenDecimals = input.token.decimals ?? DEFAULT_TOKEN_DECIMALS;
+  const spendAmount = clampAmount(raw.from.amount, USDC_DECIMALS);
+  const receiveAmount = clampAmount(raw.to.amount, tokenDecimals);
   return {
     quoteId: raw.quoteId,
     // Flash has no expiry field; API_CONTRACT section 6 fixes ours at quote time + 60 s.
@@ -80,10 +120,20 @@ export function fromFlashQuote(raw: RawFlashQuote, input: FlashQuoteInput, now: 
     side: input.request.side,
     chain: CHAINS.BASE_MAINNET.flashName,
     chainId: CHAINS.BASE_MAINNET.id,
-    spend: { symbol: SPEND_SYMBOL, amount: raw.from.amount },
-    receive: { symbol: input.token.symbol, amount: raw.to.amount },
+    spend: { symbol: SPEND_SYMBOL, amount: spendAmount },
+    receive: { symbol: input.token.symbol, amount: receiveAmount },
     feesUsd: raw.fees.estimatedFeeNotional,
     estimatedPriceImpact: plainPriceImpact(raw.estimatedPriceImpact),
+    ...deriveQuoteFactors({
+      request: input.request,
+      spendAmount,
+      receiveAmount,
+      tokenDecimals,
+      spendNotional: raw.from.notional,
+      receiveNotional: raw.to.notional,
+      recommendedSlippage: raw.recommendedSlippage,
+      orderTypedData,
+    }),
     steps: {
       approveTx: raw.evm?.approveTx ?? null,
       permitTypedData: presentOrNull(raw.evm?.permitTypedData),
@@ -155,8 +205,6 @@ export function mapFlashStatus(raw: string, closeReason: string | null): MappedS
 export function isUnknownFlashStatus(mapped: MappedStatus): boolean {
   return mapped.status === "failed" && mapped.error !== null && mapped.error.startsWith(UNKNOWN_STATUS_PREFIX);
 }
-
-const MS_PER_SECOND = 1000;
 
 function isoToUnixSeconds(iso: string | null | undefined): number | undefined {
   if (!iso) return undefined;

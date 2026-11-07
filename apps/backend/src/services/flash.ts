@@ -1,6 +1,8 @@
 import {
   FlashQuoteResponse,
   MAX_FLASH_TRADE_USD,
+  MAX_LIMIT_EXPIRY_SECONDS,
+  MIN_LIMIT_EXPIRY_SECONDS,
   toUsdcUnits,
   type FlashOrderDetail,
   type FlashOrderRequest,
@@ -78,6 +80,25 @@ function requirePositiveLimitPrice(request: FlashQuoteRequest): void {
   }
 }
 
+/** 0 < slippage <= 1, compared on digits so "1.0" and "1" are the same bound (no float). */
+function requireSlippageInRange(slippage: string): void {
+  const [whole = "0", fraction = ""] = slippage.split(".");
+  const units = BigInt(whole + fraction);
+  if (units === 0n || units > 10n ** BigInt(fraction.length)) {
+    throw badRequest("slippage: must be greater than 0 and at most 1");
+  }
+}
+
+/** Flash answers 400 to expireTime on a market order, and an expiry too near or too far is never what the user meant. */
+function requireExpiryWindow(request: FlashQuoteRequest, now: number): void {
+  if (request.expireAt == null) return;
+  if (request.orderType !== "limit") throw badRequest("expireAt: only valid for limit orders");
+  const secondsAhead = request.expireAt - now;
+  if (secondsAhead < MIN_LIMIT_EXPIRY_SECONDS || secondsAhead > MAX_LIMIT_EXPIRY_SECONDS) {
+    throw badRequest(`expireAt: must be between ${MIN_LIMIT_EXPIRY_SECONDS} seconds and 30 days from now`);
+  }
+}
+
 /** Adapter errors are mapped here, explicitly; anything else stays a 500 (the subclass check comes first). */
 function mapFlashError(err: unknown): never {
   if (err instanceof FlashNotFoundError) throw notFound(err.message);
@@ -97,6 +118,8 @@ export class FlashService {
     const token = requireFlashToken(request.symbol);
     requireSpendableAmount(request.amount);
     requirePositiveLimitPrice(request);
+    requireSlippageInRange(request.slippage);
+    requireExpiryWindow(request, this.deps.clock.now());
     const quoted = await this.deps.flash.quote({ request, token }).catch(mapFlashError);
     const response = this.requireValidQuote(quoted);
     // The typed data is kept as Flash sent it; /flash/order echoes these strings byte-for-byte (RULES 4.4).

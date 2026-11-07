@@ -67,7 +67,9 @@ process.on("SIGINT", () => {
 });
 
 process.stdout.write("Building the extension (apps/extension/dist)...\n");
-const build = spawnSync("pnpm", ["--filter", "@predictx/extension", "build"], { cwd: ROOT, env, shell: true, stdio: "inherit" });
+// The demo runs the local backend and dashboard, so this build must point at them; a normal build targets the deployed app.
+const localExtensionEnv = { ...env, VITE_EXTENSION_API_BASE_URL: "http://localhost:8787/api/v1", VITE_EXTENSION_DASHBOARD_URL: "http://localhost:5173" };
+const build = spawnSync("pnpm", ["--filter", "@predictx/extension", "build"], { cwd: ROOT, env: localExtensionEnv, shell: true, stdio: "inherit" });
 if (build.status !== 0) {
   process.stdout.write("Extension build failed; fix it first.\n");
   process.exit(1);

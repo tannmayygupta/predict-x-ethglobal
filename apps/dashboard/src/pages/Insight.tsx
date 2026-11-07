@@ -15,7 +15,7 @@ export function Insight() {
       {token ? (
         <section aria-label="AI insight" className="flex flex-col gap-3 rounded-card border border-rule bg-ink p-5 shadow-card">
           <TokenPicker tokens={tokens} symbol={token.symbol} onChange={setPicked} />
-          <InsightPanel key={token.symbol} symbol={token.symbol} canTrade={token.flashSupported} onUseLimit={() => navigate("/swap")} />
+          <InsightPanel key={token.symbol} symbol={token.symbol} canTrade={token.flashSupported} onUseLimit={(price, suggestion) => navigate(`/swap?symbol=${encodeURIComponent(suggestion.symbol)}&limit=${encodeURIComponent(price)}`)} />
         </section>
       ) : (
         <div className="flex flex-col gap-3" aria-busy="true">

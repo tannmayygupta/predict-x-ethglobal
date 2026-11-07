@@ -16,6 +16,14 @@ There is no build step: the server runs from TypeScript through `tsx` (`build` o
 
 Boot writes two JSON log lines worth reading: `backend config` (every value, secrets shown as `[set]` or `[empty]`, the RPC URL reduced to its origin) and `backend listening` with the bound port. A config error exits with code 1 and one `backend failed to start` line whose `reason` names the variable.
 
+## Market data (CoinGecko only, D-005)
+
+- One batched `GET /coins/markets` (all allowlist ids, `precision=full`, 24h and 7d changes) feeds `/market/:symbol` and the insight prompt; cached 60 s with single-flight. A cached price older than 15 minutes is no longer served: the route answers 502.
+- `GET /market/:symbol/chart?range=24h|7d` comes from `market_chart` (289 five-minute or 169 hourly points), cut to at most 96 (24h) or 85 (7d) points; open, low and high are computed from the full series first. Cached 300 s (24h) and 900 s (7d); a chart older than 1 h answers 502. A bad `range` is a 400.
+- Liquidity is `total_reserve_in_usd` from CoinGecko's onchain endpoint (same host and key), truncated to cents; it is null when no pool is listed or the lookup fails. High, low and liquidity never fail `/market`.
+- A 429 from CoinGecko opens a window (its `Retry-After`, else 60 s) in which no request is sent and only cached data is served.
+- Flash `/search` is not used (it is gated for our key); Flash supplies only quotes. The insight service never imports the Flash client or service (FR-I-04, enforced by a static test).
+
 ## Environment variables
 
 | Variable | Required | Default | Notes |

@@ -1,5 +1,5 @@
 /** Example responses. Part A's mock server serves exactly these. Part B must keep them valid. */
-import type { FlashOrderDetail, FlashQuoteResponse, InsightResponse, Market, Pool, Position } from "./schemas";
+import type { FlashOrderDetail, FlashQuoteResponse, InsightResponse, Market, MarketChart, Pool, Position } from "./schemas";
 
 const WALLET = "0x1111111111111111111111111111111111111111";
 const POOL = "0x2222222222222222222222222222222222222222";
@@ -12,6 +12,30 @@ export const marketEth: Market = {
   priceUsd: "2451.12",
   change24hPct: -1.8,
   updatedAt: 1761600000,
+  change24hUsd: "-44.93",
+  marketCapUsd: "295820000000",
+  volume24hUsd: "11580000000",
+  high24hUsd: "2503.40",
+  low24hUsd: "2431.07",
+  liquidityUsd: "138690000",
+  verified: true,
+};
+
+/** 24h chart: a short, valid series (the real one has up to 96 points). */
+export const marketChartEth: MarketChart = {
+  symbol: "ETH",
+  range: "24h",
+  points: [
+    [1761513600, "2496.05"],
+    [1761535200, "2478.31"],
+    [1761556800, "2441.90"],
+    [1761578400, "2462.77"],
+    [1761600000, "2451.12"],
+  ],
+  openUsd: "2496.05",
+  lowUsd: "2431.07",
+  highUsd: "2503.4",
+  updatedAt: 1761600000,
 };
 
 export const insightEth: InsightResponse = {
@@ -22,6 +46,8 @@ export const insightEth: InsightResponse = {
   suggestedLimit: { side: "buy", priceUsd: "2380.00", reason: "About 3% below spot" },
   degraded: false,
   disclaimer: "Not financial advice.",
+  spotUsd: "2451.12",
+  asOf: 1761600000,
 };
 
 export const quoteEthMarket: FlashQuoteResponse = {
@@ -35,11 +61,36 @@ export const quoteEthMarket: FlashQuoteResponse = {
   receive: { symbol: "ETH", amount: "0.000816" },
   feesUsd: "0.01",
   estimatedPriceImpact: "0.0004",
+  recommendedSlippage: "0.15",
+  slippage: "0.01",
+  spendUsd: "2.00",
+  receiveUsd: "1.96",
+  minReceive: "0.000807",
+  effectivePriceUsd: "2450.98",
+  marketPriceUsd: "2401.96",
+  limitPriceUsd: null,
+  orderDeadline: 1761600300,
   steps: {
     approveTx: { to: "0x3333333333333333333333333333333333333333", data: "0x095ea7b3" },
     permitTypedData: null,
     orderTypedData: "{\"types\":{},\"domain\":{},\"primaryType\":\"Order\",\"message\":{}}",
   },
+};
+
+/** A limit order below market: no slippage, no market price, good till cancelled. */
+export const quoteEthLimit: FlashQuoteResponse = {
+  ...quoteEthMarket,
+  quoteId: "q_124",
+  orderType: "limit",
+  receive: { symbol: "ETH", amount: "0.000840" },
+  recommendedSlippage: null,
+  slippage: null,
+  receiveUsd: "2.00",
+  minReceive: "0.000840",
+  effectivePriceUsd: "2380.95",
+  marketPriceUsd: null,
+  limitPriceUsd: "2380.00",
+  orderDeadline: null,
 };
 
 export const orderFilled: FlashOrderDetail = {

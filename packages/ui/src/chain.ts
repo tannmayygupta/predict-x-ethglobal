@@ -3,6 +3,7 @@
  * UI uses them right after a transaction because the backend caches pool reads for 10 s (decision D-T6).
  */
 import {
+  DEPLOYED_APP_URL,
   deployments,
   mockUsdcAbi,
   predictionPoolAbi,
@@ -22,7 +23,7 @@ export interface ChainOptions {
   rpcUrl?: string;
   poolAddress?: Address;
   usdcAddress?: Address;
-  /** Origin used to build Pool.dashboardUrl, same as the backend's DASHBOARD_URL. */
+  /** Origin used to build Pool.dashboardUrl, same as the backend's DASHBOARD_URL. Defaults to the deployed app, never to a local address. */
   dashboardUrl?: string;
 }
 
@@ -48,7 +49,7 @@ export function createChainClients(options: ChainOptions = {}): ChainClients {
     rpcUrl,
     poolAddress: options.poolAddress ?? known.predictionPool,
     usdcAddress: options.usdcAddress ?? known.mockUsdc,
-    dashboardUrl: options.dashboardUrl ?? "http://localhost:5173",
+    dashboardUrl: options.dashboardUrl ?? DEPLOYED_APP_URL,
     publicClient: makePublicClient(rpcUrl),
   };
 }

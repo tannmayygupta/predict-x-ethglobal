@@ -2,11 +2,17 @@ import OpenAI, { APIConnectionTimeoutError, APIError, AuthenticationError } from
 import type { Config } from "../config";
 import { INSIGHT_SCHEMA_NAME, InsightModelError, type InsightModel, type InsightModelInput } from "./insightModel";
 
-/** FR-I-01 wants the tab to render within 6 s of a click; the service retries once, so a hung call must give up early. */
-export const OPENAI_TIMEOUT_MS = 8_000;
+/**
+ * D-B15: a live run showed the model needing 3-5 s and timing out at 5 s on 3 of 5 calls, so the limit is 9 s.
+ * A timeout, a 401 and a refusal are never retried; a retry follows only a
+ * fast failure, so the worst case is about one timeout plus a quick error.
+ */
+export const OPENAI_TIMEOUT_MS = 9_000;
 /** The service does exactly one retry itself (FR-B-03); the SDK's default of two would triple the wait. */
 const SDK_RETRIES = 0;
 const HTTP_UNAUTHORIZED = 401;
+const HTTP_TOO_MANY_REQUESTS = 429;
+const HTTP_SERVER_ERROR_MIN = 500;
 
 export interface OpenAiInsightModelOptions {
   apiKey: string;
@@ -19,11 +25,17 @@ export interface OpenAiInsightModelOptions {
 
 /** 401 bodies echo part of the key, so the upstream message is never forwarded for that status (RULES 2.1). */
 function toModelError(err: unknown): InsightModelError {
-  if (err instanceof AuthenticationError) return new InsightModelError(`openai rejected the API key (${HTTP_UNAUTHORIZED})`);
-  if (err instanceof APIConnectionTimeoutError) {
-    return new InsightModelError(`openai request timed out after ${OPENAI_TIMEOUT_MS} ms`);
+  if (err instanceof AuthenticationError) {
+    return new InsightModelError(`openai rejected the API key (${HTTP_UNAUTHORIZED})`, { retryable: false });
   }
-  if (err instanceof APIError) return new InsightModelError(`openai ${err.status ?? "connection"} error: ${err.message}`);
+  if (err instanceof APIConnectionTimeoutError) {
+    return new InsightModelError(`openai request timed out after ${OPENAI_TIMEOUT_MS} ms`, { retryable: false });
+  }
+  if (err instanceof APIError) {
+    // Only rate limits, server faults and dropped connections (no status) can differ on a second try.
+    const retryable = err.status === undefined || err.status === HTTP_TOO_MANY_REQUESTS || err.status >= HTTP_SERVER_ERROR_MIN;
+    return new InsightModelError(`openai ${err.status ?? "connection"} error: ${err.message}`, { retryable });
+  }
   return new InsightModelError(`openai call failed: ${err instanceof Error ? err.message : String(err)}`);
 }
 
@@ -65,7 +77,7 @@ export class OpenAiInsightModel implements InsightModel {
     for (const item of response.output) {
       if (item.type !== "message") continue;
       for (const part of item.content) {
-        if (part.type === "refusal") throw new InsightModelError(`openai refused: ${part.refusal}`);
+        if (part.type === "refusal") throw new InsightModelError(`openai refused: ${part.refusal}`, { retryable: false });
       }
     }
     if (response.output_parsed === null) throw new InsightModelError("openai returned no JSON output");

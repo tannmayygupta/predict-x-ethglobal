@@ -1,84 +1,84 @@
-import { CHAINS, type Token } from "@predictx/shared";
-import {
-  AddressChip, Badge, Button, COPY, InsightPanel, Notice, Skeleton, SwapPanel, Tabs, cx, formatChange, formatUsdPrice, loadError, useApp,
-  useMarket, useNow,
-} from "@predictx/ui";
-import { useState } from "react";
+import type { Token } from "@predictx/shared";
+import { TokenMarketCard } from "@predictx/ui";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AnchorRect, HoverStore } from "../../x/hoverStore";
-import { placeCard } from "../../x/hoverStore";
+import { CARD_MARGIN_PX, placeCard } from "../../x/hoverStore";
 
-const CARD_WIDTH = 340;
-const CARD_HEIGHT = 360;
-type Tab = "swap" | "insight";
+/** Measured from the design: header 48, price block, 108 px chart, buttons row and 24 px padding. */
+export const CARD_WIDTH = 480;
+/** First-paint guess only; the rendered height is measured after mount and the card is placed again. */
+export const CARD_HEIGHT_ESTIMATE = 454;
+const VIEWPORT_GUTTER_PX = 24;
 
-/** A1: the hover card. Header is live market data; Swap exists only for tokens Flash can trade. */
-export function TokenCard({ token, anchor, store, onPredict }: { token: Token; anchor: AnchorRect; store: HoverStore; onPredict(symbol: string): void }) {
-  const { api } = useApp();
-  const now = useNow();
-  const { market, error, delayed, retry } = useMarket(api, token.symbol, now);
-  const [tab, setTab] = useState<Tab>(token.flashSupported ? "swap" : "insight");
-  const [suggestedLimit, setSuggestedLimit] = useState<string | null>(null);
-  const place = placeCard(anchor, { width: window.innerWidth, height: window.innerHeight }, { width: CARD_WIDTH, height: CARD_HEIGHT });
-  const tabs: ReadonlyArray<{ value: Tab; label: string }> = token.flashSupported
-    ? [{ value: "swap", label: "Swap" }, { value: "insight", label: "AI" }]
-    : [{ value: "insight", label: "AI" }];
+/** Only a scroll of the page itself dismisses the card; scrolling inside the card or any other box must not. */
+export function isViewportScroll(event: Event, card: Element | null): boolean {
+  const target = event.target;
+  if (card && target instanceof Node && card.contains(target)) return false;
+  return target === document || target === document.scrollingElement;
+}
+
+export interface TokenCardProps {
+  token: Token;
+  anchor: AnchorRect;
+  store: HoverStore;
+  onSwap(symbol: string): void;
+  onDetails(symbol: string): void;
+  onPredict(symbol: string): void;
+}
+
+/** A1: the hover card. Positions the market card at the tag; all content and data live in TokenMarketCard. */
+export function TokenCard({ token, anchor, store, onSwap, onDetails, onPredict }: TokenCardProps) {
+  // The card is fixed to the viewport, so a scroll or resize would leave it floating away from its tag.
+  const ref = useRef<HTMLElement>(null);
+  const [measured, setMeasured] = useState<number | null>(null);
+
+  useEffect(() => {
+    const dismiss = (): void => store.close();
+    const onScroll = (event: Event): void => {
+      if (isViewportScroll(event, ref.current)) dismiss();
+    };
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    window.addEventListener("resize", dismiss);
+    return () => {
+      window.removeEventListener("scroll", onScroll, { capture: true });
+      window.removeEventListener("resize", dismiss);
+    };
+  }, [store, anchor]);
+
+  // The estimate is only right for the common content; measure the real card and re-place it.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = (): void => setMeasured(el.getBoundingClientRect().height);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const width = Math.min(CARD_WIDTH, window.innerWidth - VIEWPORT_GUTTER_PX);
+  const maxHeight = Math.max(0, window.innerHeight - 2 * CARD_MARGIN_PX);
+  const height = Math.min(measured && measured > 0 ? measured : CARD_HEIGHT_ESTIMATE, maxHeight);
+  const place = placeCard(anchor, { width: window.innerWidth, height: window.innerHeight }, { width, height });
 
   return (
     <section
+      ref={ref}
       role="dialog"
       aria-label={`${token.name} ${token.symbol}`}
       onMouseEnter={store.enterCard}
       onMouseLeave={store.leaveCard}
-      style={{ left: place.left, top: place.top, width: CARD_WIDTH }}
-      className="px-card-in pointer-events-auto fixed overflow-hidden rounded-card border border-rule bg-ink text-text shadow-card"
+      style={{ left: place.left, top: place.top, width, maxHeight }}
+      className="px-card-in pointer-events-auto fixed overflow-y-auto shadow-card"
     >
-      <header className="flex flex-col gap-1 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="m-0 font-display text-16 font-semibold">
-            {token.name} <span className="text-mute">{token.symbol}</span>
-          </h2>
-          <span className="flex items-center gap-2">
-            {token.flashChainId === CHAINS.BASE_MAINNET.id ? <Badge>{CHAINS.BASE_MAINNET.name}</Badge> : null}
-            <Button variant="ghost" size="sm" aria-label="Close token card" onClick={store.close}>x</Button>
-          </span>
-        </div>
-        {market ? (
-          <>
-            <div className="flex items-baseline gap-3">
-              <span className="font-display text-28 font-bold">{formatUsdPrice(market.priceUsd)}</span>
-              <span className={cx("text-13", market.change24hPct < 0 ? "text-no" : "text-yes")}>{formatChange(market.change24hPct)} today</span>
-            </div>
-            {delayed ? <span className="text-12 text-mute">{COPY.price_delayed}</span> : null}
-          </>
-        ) : error ? (
-          <Notice kind="error" action={<Button size="sm" variant="secondary" onClick={retry}>Try again</Button>}>
-            {loadError(token.symbol)}
-          </Notice>
-        ) : (
-          <div className="flex flex-col gap-2" aria-busy="true">
-            <Skeleton className="h-7 w-32" />
-            <Skeleton className="h-4 w-40" />
-          </div>
-        )}
-        {token.address ? <AddressChip address={token.address} explorer={CHAINS.BASE_MAINNET.explorer} /> : null}
-      </header>
-
-      <Tabs<Tab> tabs={tabs} value={tab} onChange={(next) => setTab(next)} />
-      {tab === "swap" && token.flashSupported ? (
-        <div className="p-4"><SwapPanel token={token} initialLimit={suggestedLimit} /></div>
-      ) : (
-        <div className="p-4">
-          <InsightPanel
-            symbol={token.symbol}
-            canTrade={token.flashSupported}
-            onUseLimit={(price) => { setSuggestedLimit(price); setTab("swap"); }}
-          />
-        </div>
-      )}
-      <footer className="flex items-center justify-between border-t border-rule px-4 py-2 text-12 text-mute">
-        <Button variant="secondary" size="sm" onClick={() => onPredict(token.symbol)}>{COPY.create_cta}</Button>
-        {token.flashSupported ? <span>Trades run on Base</span> : null}
-      </footer>
+      <TokenMarketCard
+        token={token}
+        onClose={store.close}
+        onSwap={() => onSwap(token.symbol)}
+        onDetails={() => onDetails(token.symbol)}
+        onPredict={() => onPredict(token.symbol)}
+      />
     </section>
   );
 }

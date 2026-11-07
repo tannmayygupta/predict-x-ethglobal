@@ -1,9 +1,12 @@
 import type { ChainOptions } from "@predictx/ui";
-import { Address } from "@predictx/shared";
+import { Address, DEPLOYED_API_BASE_URL, DEPLOYED_APP_URL } from "@predictx/shared";
 
 /**
- * Build-time configuration from the repo-root .env (VITE_ variables are public by design; secrets never use
- * that prefix). Contract addresses fall back to packages/shared deployments when unset.
+ * Build-time configuration (VITE_ variables are public by design; secrets never use that prefix). The extension is built
+ * on a machine whose repo-root .env holds local addresses for the dashboard, and a link to one in a post is dead for every
+ * reader. So it does not read the dashboard's VITE_API_BASE_URL and VITE_DASHBOARD_URL: it targets the deployed app
+ * unless VITE_EXTENSION_API_BASE_URL and VITE_EXTENSION_DASHBOARD_URL say otherwise (a local stack, see .env.example).
+ * Contract addresses fall back to packages/shared deployments when unset.
  */
 const env = import.meta.env;
 
@@ -12,13 +15,13 @@ function optionalAddress(value: string | undefined): `0x${string}` | undefined {
   return Address.parse(value) as `0x${string}`;
 }
 
-function required(name: string, value: string | undefined): string {
-  if (!value) throw new Error(`${name} is not set. Copy .env.example to .env at the repo root.`);
-  return value;
+/** A blank line in .env arrives as "" and must fall back exactly like an unset variable. */
+function valueOr(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
 }
 
-export const apiBaseUrl = required("VITE_API_BASE_URL", env.VITE_API_BASE_URL);
-export const dashboardUrl = required("VITE_DASHBOARD_URL", env.VITE_DASHBOARD_URL);
+export const apiBaseUrl = valueOr(env.VITE_EXTENSION_API_BASE_URL, DEPLOYED_API_BASE_URL);
+export const dashboardUrl = valueOr(env.VITE_EXTENSION_DASHBOARD_URL, DEPLOYED_APP_URL);
 
 export const chainOptions: ChainOptions = {
   dashboardUrl,

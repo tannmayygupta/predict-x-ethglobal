@@ -192,3 +192,45 @@ describe("B01-27-purge purgeExpired", () => {
     db.close();
   });
 });
+
+describe("rows stored before the contract change still parse (new keys default to null)", () => {
+  /** The JSON a pre-change backend wrote: none of the new quote or insight keys. */
+  function withoutKeys<T extends object>(value: T, keys: string[]): Record<string, unknown> {
+    return Object.fromEntries(Object.entries(value).filter(([key]) => !keys.includes(key)));
+  }
+
+  it("an old quote row gets null for every new quote factor", () => {
+    const db = openDb(":memory:");
+    migrate(db);
+    const factors = [
+      "recommendedSlippage",
+      "slippage",
+      "spendUsd",
+      "receiveUsd",
+      "minReceive",
+      "effectivePriceUsd",
+      "marketPriceUsd",
+      "limitPriceUsd",
+      "orderDeadline",
+    ];
+    db.prepare(
+      `INSERT INTO quotes (quote_id, wallet_address, symbol, order_type, expires_at, response,
+        order_typed_data, permit_typed_data, created_at, used_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+    ).run("q_old", WALLET, "ETH", "market", 1761600060, JSON.stringify(withoutKeys(fixtures.quoteEthMarket, factors)), RAW_ORDER, null, 1761600000);
+    const stored = new QuotesRepo(db).get("q_old");
+    expect(stored?.response).toMatchObject(Object.fromEntries(factors.map((key) => [key, null])));
+    db.close();
+  });
+
+  it("an old cached insight gets null spotUsd and asOf", () => {
+    const db = openDb(":memory:");
+    migrate(db);
+    db.prepare("INSERT INTO insights (key, response, expires_at) VALUES (?, ?, ?)").run(
+      "eth:",
+      JSON.stringify(withoutKeys(fixtures.insightEth, ["spotUsd", "asOf"])),
+      1000,
+    );
+    expect(new InsightsRepo(db).get("eth:", 999)).toMatchObject({ symbol: "ETH", spotUsd: null, asOf: null });
+    db.close();
+  });
+});

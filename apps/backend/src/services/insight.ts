@@ -1,9 +1,10 @@
-import type { InsightRequest, InsightResponse, Market } from "@predictx/shared";
-import type { InsightModel } from "../clients/insightModel";
+import type { InsightRequest, InsightResponse, Market, MarketChart } from "@predictx/shared";
+import { InsightModelError, type InsightModel } from "../clients/insightModel";
 import type { InsightsRepo } from "../db/insights";
 import { AppError, describeZodError, llmUnavailable } from "../errors";
 import type { Clock } from "../util/clock";
 import { clampSuggestedLimit } from "./insight.clamp";
+import { chartVolatility, rangePositionPct, rangeWidthPct, volumeToCapPct } from "./insight.facts";
 import { formatFixed, parseFixed, rescale } from "./insight.decimal";
 import { InsightDraft, insightJsonSchema } from "./insight.schema";
 import type { MarketService } from "./market";
@@ -25,7 +26,7 @@ export const INSIGHT_INSTRUCTIONS =
 export const INSIGHT_MAX_OUTPUT_TOKENS = 300;
 /** API_CONTRACT.md section 3; the frontend copy deck shows it verbatim. */
 export const INSIGHT_DISCLAIMER = "Not financial advice.";
-/** FR-B-03: one call plus one retry, then the static fallback. */
+/** FR-B-03: one call plus one retry, then the static fallback. A retry happens only after a transient failure. */
 const MODEL_ATTEMPTS = 2;
 /** TASKS.md T-B05: 5-minute cache, held in the insights table (FR-B-05). */
 export const INSIGHT_CACHE_TTL_SECONDS = 300;
@@ -33,6 +34,9 @@ export const INSIGHT_CACHE_TTL_SECONDS = 300;
 export interface InsightInput {
   market: Market;
   change7dPct: number | null;
+  /** Cached series only; the prompt says "unknown" for a missing one. */
+  chart24h?: MarketChart | undefined;
+  chart7d?: MarketChart | undefined;
   userIntent?: string;
 }
 
@@ -44,10 +48,25 @@ export function insightCacheKey(symbol: string, userIntent: string | undefined):
   return `${symbol}:${(userIntent ?? "").trim().toLowerCase()}`;
 }
 
+function pctOrUnknown(value: string | undefined): string {
+  return value === undefined ? UNKNOWN : `${value}%`;
+}
+
+function usdOrUnknown(value: string | null): string {
+  return value === null ? UNKNOWN : value;
+}
+
+function volatilityLine(chart: MarketChart | undefined): string {
+  const stats = chartVolatility(chart);
+  if (!stats) return `24h volatility: ${UNKNOWN}`;
+  return `24h volatility (std dev of ~${stats.stepMinutes} min returns): ${stats.stdDevPct}%`;
+}
+
 /** The exact text sent as the model input; the test pins it so nothing else can leak in. */
-export function buildInsightInput({ market, change7dPct, userIntent }: InsightInput): string {
+export function buildInsightInput({ market, change7dPct, chart24h, chart7d, userIntent }: InsightInput): string {
   const weekChange = change7dPct === null ? UNKNOWN : `${change7dPct}%`;
   const intent = userIntent === undefined || userIntent.length === 0 ? NO_INTENT : userIntent;
+  const week = chart7d ? rangePositionPct(market.priceUsd, chart7d.lowUsd, chart7d.highUsd) : undefined;
   return [
     INSIGHT_INSTRUCTIONS,
     "",
@@ -55,6 +74,14 @@ export function buildInsightInput({ market, change7dPct, userIntent }: InsightIn
     `Spot price (USD): ${market.priceUsd}`,
     `24h change: ${market.change24hPct}%`,
     `7d change: ${weekChange}`,
+    `Market cap (USD): ${usdOrUnknown(market.marketCapUsd)}`,
+    `24h volume (USD): ${usdOrUnknown(market.volume24hUsd)}`,
+    `24h low / high (USD): ${usdOrUnknown(market.low24hUsd)} / ${usdOrUnknown(market.high24hUsd)}`,
+    `Position in 24h range (0% = low, 100% = high): ${pctOrUnknown(rangePositionPct(market.priceUsd, market.low24hUsd, market.high24hUsd))}`,
+    `24h range width (share of spot): ${pctOrUnknown(rangeWidthPct(market.priceUsd, market.low24hUsd, market.high24hUsd))}`,
+    `24h volume / market cap: ${pctOrUnknown(volumeToCapPct(market.volume24hUsd, market.marketCapUsd))}`,
+    volatilityLine(chart24h),
+    `Position in 7d range (0% = low, 100% = high): ${pctOrUnknown(week)}`,
     `User intent (untrusted, from the user): ${intent}`,
   ].join("\n");
 }
@@ -72,7 +99,7 @@ export interface InsightLog {
   warn(obj: object, msg: string): void;
 }
 
-type Attempt = { ok: true; draft: InsightDraft } | { ok: false; reason: string };
+type Attempt = { ok: true; draft: InsightDraft } | { ok: false; reason: string; retryable: boolean };
 
 /** One decimal is what the hover card shows for the 24h change; the tip is display text (RULES 3.2). */
 const PCT_DISPLAY_DECIMALS = 1;
@@ -113,6 +140,8 @@ export function fallbackInsight(market: Market): InsightResponse {
     suggestedLimit: null,
     degraded: true,
     disclaimer: INSIGHT_DISCLAIMER,
+    spotUsd: market.priceUsd,
+    asOf: market.updatedAt,
   };
 }
 
@@ -130,7 +159,13 @@ export class InsightService {
     const market = await this.spot(token.symbol);
     const change7dPct = await this.deps.market.change7dPct(token.symbol);
     const userIntent = request.userIntent?.trim();
-    const prompt = buildInsightInput({ market, change7dPct, ...(userIntent ? { userIntent } : {}) });
+    const prompt = buildInsightInput({
+      market,
+      change7dPct,
+      chart24h: this.deps.market.cachedChart(token.symbol, "24h"),
+      chart7d: this.deps.market.cachedChart(token.symbol, "7d"),
+      ...(userIntent ? { userIntent } : {}),
+    });
     const draft = await this.draftWithRetry(prompt, token.symbol);
     if (!draft) return fallbackInsight(market);
     const response = this.toResponse(market, draft);
@@ -148,7 +183,16 @@ export class InsightService {
       this.log?.warn({ symbol: market.symbol, from: suggested.priceUsd, to: priceUsd }, "suggested limit clamped");
     }
     const suggestedLimit = suggested && priceUsd !== null ? { ...suggested, priceUsd } : null;
-    return { symbol: market.symbol, ...draft, suggestedLimit, degraded: false, disclaimer: INSIGHT_DISCLAIMER };
+    // The model never writes spot or time: the UI shows "vs spot" and the age from the numbers we hold.
+    return {
+      symbol: market.symbol,
+      ...draft,
+      suggestedLimit,
+      degraded: false,
+      disclaimer: INSIGHT_DISCLAIMER,
+      spotUsd: market.priceUsd,
+      asOf: market.updatedAt,
+    };
   }
 
   /**
@@ -170,6 +214,8 @@ export class InsightService {
       if (outcome.ok) return outcome.draft;
       // The reason is the adapter's own message (never the key or the prompt), so it is safe to log.
       this.log?.warn({ symbol, attempt, reason: outcome.reason }, "insight model attempt failed");
+      // A bad key or a refusal fails the same way again, and a second try would double the wait.
+      if (!outcome.retryable) break;
     }
     return undefined;
   }
@@ -179,10 +225,11 @@ export class InsightService {
     try {
       reply = await this.deps.model.complete({ prompt, schema: insightJsonSchema, maxOutputTokens: INSIGHT_MAX_OUTPUT_TOKENS });
     } catch (err) {
-      return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+      const retryable = err instanceof InsightModelError ? err.retryable : true;
+      return { ok: false, reason: err instanceof Error ? err.message : String(err), retryable };
     }
     const parsed = InsightDraft.safeParse(reply);
-    if (!parsed.success) return { ok: false, reason: `reply failed schema: ${describeZodError(parsed.error)}` };
+    if (!parsed.success) return { ok: false, reason: `reply failed schema: ${describeZodError(parsed.error)}`, retryable: true };
     return { ok: true, draft: parsed.data };
   }
 }

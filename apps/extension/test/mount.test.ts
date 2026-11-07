@@ -19,6 +19,14 @@ describe("mountShadow", () => {
     expect(document.querySelectorAll("style, link[rel=stylesheet]").length).toBe(before);
   });
 
+  it("applies the dark theme class to the overlay root only, and keeps bet boxes on the default paper theme", () => {
+    const overlay = mountShadow("t-overlay", { className: "px-root px-theme-dark" });
+    expect(overlay.root.classList.contains("px-theme-dark")).toBe(true);
+    expect(overlay.host.shadowRoot?.querySelector("style")?.textContent).toContain(".px-theme-dark");
+    const box = mountShadow("t-overlay-box", { inline: true });
+    expect(box.root.className).toBe("px-root");
+  });
+
   it("replaces an earlier mount with the same id instead of duplicating it", () => {
     mountShadow("t-overlay");
     mountShadow("t-overlay");

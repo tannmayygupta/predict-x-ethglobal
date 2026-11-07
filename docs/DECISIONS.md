@@ -41,7 +41,7 @@
 | D-B4 | Degraded insights are not cached | Recovery is immediate once the key is fixed |
 | D-B5 | Market and pool reads serve a stale cache entry on upstream failure; 502 INTERNAL only with no cache | Keeps the hover card and dashboard alive through CoinGecko or RPC blips |
 | D-B6 | Backend env gains DASHBOARD_URL for Pool.dashboardUrl, plus LOG_LEVEL, TRUST_PROXY (false or a trusted hop count, 1 on Railway or Render; "true" is rejected because it lets clients spoof x-forwarded-for), VALIDATE_RESPONSES | API_CONTRACT needs the dashboard origin server-side |
-| D-B7 | 7d change comes from CoinGecko coins/markets?price_change_percentage=7d (lazy, 300 s cache); simple/price is called with precision=full | simple/price has no 7d field; without precision=full PEPE rounds to 5.0e-06 |
+| D-B7 | (Superseded 2026-11-07: one batched `/coins/markets` call with `precision=full` now returns price, 24h and 7d change and the stats; see API_CONTRACT section 3.) 7d change comes from CoinGecko coins/markets?price_change_percentage=7d (lazy, 300 s cache); simple/price is called with precision=full | simple/price has no 7d field; without precision=full PEPE rounds to 5.0e-06 |
 | D-B8 | Response validation against shared schemas runs as a preSerialization hook when VALIDATE_RESPONSES=true (default) | Catches contract drift at runtime without altering payloads |
 | D-B9 | Backend runs TypeScript through tsx in dev and prod (start = tsx src/server.ts); no dist bundle | @predictx/shared is consumed as TS source |
 | D-B10 | Backend requires Node >= 22 (better-sqlite3 13 and openai 7 prebuilds); root engines and the stack table should move from Node 20 to 22 | Pinned versions chosen from docs/notes/backend-stack.md |
@@ -49,7 +49,7 @@
 | D-B12 | Flash status mapping: PENDING/UNSPECIFIED -> submitted, ACCEPTED/PARTIALLY_FILLED -> open, FILLED -> filled, CANCELLED/REJECTED/TERMINATED -> expired when closeReason is REASON_ORDER_EXPIRED else failed; txHash = last fill transactionId; expiresAt = quote time + 60 s | Flash exposes 8 statuses and no quote expiry; marked GATE0: confirm in flash.map.ts |
 | D-B13 | HttpFlashClient keeps the original Flash quote body in memory per quoteId until expiry | Flash POST /order requires every trade field resent; a restart inside the 60 s window invalidates open quotes |
 | D-B14 | The PredictionPool ABI the backend reads is defined in packages/shared/src/abi.ts; T-B06 must implement it unchanged | Backend and dashboard were built before the contract |
-| D-B15 | OpenAI call: responses.parse with strict json_schema derived from InsightResponse, max_output_tokens 300, reasoning effort none, store false, maxRetries 0, 8 s timeout; empty key boots fine and answers degraded | FR-B-03 and FR-I-03 |
+| D-B15 | OpenAI call: responses.parse with strict json_schema derived from InsightResponse, max_output_tokens 300, reasoning effort none, store false, maxRetries 0, ~~8 s~~ 9 s timeout (changed 2026-11-07: live gpt-6-luna calls took 3-5 s and a 5 s budget degraded them; no retry on 401, refusals or timeouts); empty key boots fine and answers degraded | FR-B-03 and FR-I-03 |
 
 ## Testnet-only build decisions (2026-11-06, approved by the human)
 
@@ -65,6 +65,12 @@
 | D-T8 | Paper theme (cream surfaces, ink text, cobalt accent, Fraunces display). Token names are unchanged (`--px-amber` now holds the cobalt accent) | The navy and amber look read as generated; renaming tokens would touch every component for no visible gain |
 | D-T9 | `@predictx/ui` exposes `AppProvider` and the create, swap, AI and token-picker screens; the extension and the dashboard each supply their own api, wallet and chain | The same screens now run on X and on the website without a copy |
 | D-T10 | The extension has one panel with AI, Swap and Predict, shown as a popup, a slide-up sheet or a side panel (choice kept in localStorage, guarded) | One place for everything, and a view the user can pick |
+| D-T11 | The extension overlay (hover card, panel, launcher) uses a dark lime theme through a scoped class `.px-theme-dark` in `design-tokens.css`; the dashboard and the BetBox slips stay paper | The card sits on X pages, where a dark card with a lime accent reads as a separate object; the dashboard keeps the paper look of D-T8. Token names are unchanged. New tokens `--px-up`, `--px-down`, `--px-up-soft` and class `.px-tnum` |
+| D-T12 | `liquidityUsd` comes from the CoinGecko onchain endpoint (`/onchain/networks/{network}/tokens/{address}`), not from Flash | Flash `GET /search` is gated for our key (403 `SEARCH_NOT_ELIGIBLE`). D-005 still holds: same vendor, same key and host. A failure gives `null`, never a failed market call |
+| D-T13 | `Market.verified` is true when the token is Flash-tradable on the allowlist with a pinned contract address (`flashSupported && address !== null`) | It is a statement about our own allowlist, not an external audit; the card shows it as "Verified" |
+| D-T14 | FR-I-04 is kept: no Flash data in the AI prompt, and the insight code does not import `clients/flash` or `services/flash` | The prompt uses only CoinGecko facts (market cap, volume, 24h range, 7d change, chart statistics). A static test enforces the import rule |
+| D-T15 | BTC is tradable through cbBTC (`0xcbB7...33Bf`, 8 decimals); DEGEN and BRETT are `flashSupported` on Base; PEPE stays unsupported | Live Flash quotes returned 200 for these on Base 2026-11-07; the real PEPE is not on Base |
+| D-T16 | The card labels the change "24h", not "Today" | Our change is a rolling 24 hours from CoinGecko, not since midnight. `change24hUsd` is `price * pct / (100 + pct)` in bigint, signed |
 
 ## Open items (a human must confirm; an agent never decides these)
 
@@ -77,4 +83,4 @@
 - [x] Whether the composer link is `x.com/intent/tweet` or `x.com/intent/post` on demo day: `intent/post` (D-T7, 2026-11-06)
 - [ ] Dashboard domain for `VITE_DASHBOARD_URL`
 - [ ] zod range: apps/backend and packages/shared declare ^3.23.8 but openai/helpers/zod needs >= 3.25 (lockfile has 3.25.76); bump both together
-- [ ] maxSlippage for $5 Flash orders: Flash recommended 0.15 for a $2 buy; our default is 0.01 (docs/notes/flash-api.md section 11)
+- [x] maxSlippage for $5 Flash orders (updated 2026-11-07): quotes only for now, so nothing is at risk. The Swap UI sends `slippage` for market orders only (presets 0.5%, 1%, 3%, 15%; default 1%), shows Flash's `recommendedSlippage` as "Flash suggests X%" (0.15 for small market orders; Flash ignores the maxSlippage we send) and a hint when the chosen value is below it. Minimum received uses the chosen slippage. Reconsider the default before orders are enabled (docs/DEFINITIVE.md section 9)

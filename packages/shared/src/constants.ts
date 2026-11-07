@@ -18,3 +18,16 @@ export const MAX_QUESTION_LENGTH = 140;
 export const MAX_INTENT_LENGTH = 200;
 export const MAX_FLASH_TRADE_USD = 5;
 export const API_PREFIX = "/api/v1";
+export const MAX_CHART_POINTS = 300;
+export const MIN_LIMIT_EXPIRY_SECONDS = 60;
+export const MAX_LIMIT_EXPIRY_SECONDS = 2592000;
+/** Flash uses 2^48-1 as the good-till-cancelled deadline; anything from 2^40 up is treated as "no deadline". */
+export const GTC_DEADLINE_THRESHOLD = 2 ** 40;
+
+/**
+ * The deployed app on Vercel: the dashboard at "/" and the API under API_PREFIX, one origin. This is the public
+ * production alias on purpose. The <project>-<team>.vercel.app alias is behind Vercel Authentication, so a link to it in
+ * a post sends every reader to a login page.
+ */
+export const DEPLOYED_APP_URL = "https://predictx-tawny.vercel.app";
+export const DEPLOYED_API_BASE_URL = `${DEPLOYED_APP_URL}${API_PREFIX}`;

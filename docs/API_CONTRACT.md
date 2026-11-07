@@ -26,7 +26,8 @@ Source of truth is `packages/shared/src/schemas.ts` (zod). This file explains it
 | --- | --- | --- |
 | 1 | `GET /health` | `{ "ok": true }` |
 | 2 | `GET /tokens` | Token allowlist |
-| 3 | `GET /market/:symbol` | Price for the popup |
+| 3 | `GET /market/:symbol` | Price and stats for the popup |
+| 3b | `GET /market/:symbol/chart?range=24h or 7d` | Price series for the card chart (default `24h`) |
 | 4 | `POST /insight` | AI tip and suggested limit |
 | 5 | `POST /flash/quote` | Quote and signing steps |
 | 6 | `POST /flash/order` | Submit signed order |
@@ -42,14 +43,27 @@ Pool writes (`createPool`, `stake`, `claim`, `refund`, and USDC `approve`, `mint
 **`GET /tokens`**
 ```json
 { "tokens": [ { "symbol": "ETH", "name": "Ethereum", "coingeckoId": "ethereum", "flashChainId": 8453,
-                "address": "0x4200000000000000000000000000000000000006", "decimals": 18, "flashSupported": true } ] }
+                "address": "0x4200000000000000000000000000000000000006", "decimals": 18, "flashSupported": true,
+                "network": "base", "onchain": { "network": "base", "address": "0x4200000000000000000000000000000000000006" } } ] }
 ```
+`network` (`ethereum | base | bitcoin`) and `onchain` (CoinGecko onchain network id and token address, used for the liquidity lookup; `null` when the token has no pool, e.g. BTC) are optional. Flash-tradable today: ETH, BTC (cbBTC, 8 decimals), DEGEN, BRETT, all on Base. PEPE is not.
 
 **`GET /market/ETH`**
 ```json
 { "symbol": "ETH", "name": "Ethereum", "address": "0x4200000000000000000000000000000000000006",
-  "flashChainId": 8453, "priceUsd": "2451.12", "change24hPct": -1.8, "updatedAt": 1761600000 }
+  "flashChainId": 8453, "priceUsd": "2451.12", "change24hPct": -1.8, "updatedAt": 1761600000,
+  "change24hUsd": "-44.93", "marketCapUsd": "295820000000", "volume24hUsd": "11580000000",
+  "high24hUsd": "2503.40", "low24hUsd": "2431.07", "liquidityUsd": "138690000", "verified": true }
 ```
+All price, change, cap and volume figures come from CoinGecko (D-005). `change24hUsd` is signed (`SignedDecimalString`) and equals `price * pct / (100 + pct)` in bigint, 2 decimals. `high24hUsd` and `low24hUsd` come from the full 24h chart series. `liquidityUsd` is the CoinGecko onchain `total_reserve_in_usd` truncated to 2 decimals; `null` when the token has no pool or the lookup fails. Every new key is `null` (`verified`: `false`) when unknown, and the backend always emits all of them. A failed liquidity, high or low lookup never fails the market response. `verified` is true when the token is Flash-tradable on the allowlist with a pinned contract address.
+
+**`GET /market/ETH/chart?range=24h`** (`range`: `24h` default, or `7d`)
+```json
+{ "symbol": "ETH", "range": "24h",
+  "points": [ [1761513600, "2496.05"], [1761600000, "2451.12"] ],
+  "openUsd": "2496.05", "lowUsd": "2431.07", "highUsd": "2503.4", "updatedAt": 1761600000 }
+```
+`points` are `[unix seconds, price]`, at least 2 and at most `MAX_CHART_POINTS` (300); the backend downsamples to about 96 (24h) or 85 (7d) points, keeping the first and the newest. `openUsd` (first point), `lowUsd` and `highUsd` are computed from the full series before downsampling. Prices keep 7 significant digits and are never negative. Source: CoinGecko `market_chart` (`vs_currency=usd`, `days=1` or `7`, `precision=full`). Cached 300 s (24h) and 900 s (7d); a stale entry is served on upstream failure, else `502`. A CoinGecko `429` blocks refreshes for `Retry-After` (else 60 s) and only the cache is served meanwhile.
 
 **`POST /insight`**
 ```json
@@ -59,21 +73,43 @@ Pool writes (`createPool`, `stake`, `claim`, `refund`, and USDC `approve`, `mint
 { "symbol": "ETH", "tip": "ETH is down 1.8% today. A limit buy a few percent below spot avoids chasing the move.",
   "bias": "neutral", "confidence": "low",
   "suggestedLimit": { "side": "buy", "priceUsd": "2380.00", "reason": "About 3% below spot" },
-  "degraded": false, "disclaimer": "Not financial advice." }
+  "degraded": false, "disclaimer": "Not financial advice.",
+  "spotUsd": "2451.12", "asOf": 1761600000 }
 ```
+`spotUsd` is the CoinGecko spot the suggestion was measured against and `asOf` its unix time, so the UI can show "vs spot" and the age. The service fills both; the model never writes them. The suggested limit is clamped within 15% of spot.
 
 **`POST /flash/quote`** (MVP: buy only)
 ```json
 // request
 { "walletAddress": "0x...", "symbol": "ETH", "side": "buy", "orderType": "market",
-  "amount": "2.00", "limitPriceUsd": null, "slippage": "0.01" }
+  "amount": "2.00", "limitPriceUsd": null, "slippage": "0.01", "expireAt": null }
 // response
 { "quoteId": "q_123", "expiresAt": 1761600060, "orderType": "market", "side": "buy",
   "chain": "base", "chainId": 8453,
   "spend": { "symbol": "USDC", "amount": "2.00" }, "receive": { "symbol": "ETH", "amount": "0.000816" },
   "feesUsd": "0.01", "estimatedPriceImpact": "0.0004",
+  "recommendedSlippage": "0.15", "slippage": "0.01", "spendUsd": "2.00", "receiveUsd": "1.96",
+  "minReceive": "0.000807", "effectivePriceUsd": "2450.98", "marketPriceUsd": "2401.96",
+  "limitPriceUsd": null, "orderDeadline": 1761600300,
   "steps": { "approveTx": { "to": "0x...", "data": "0x..." }, "permitTypedData": null, "orderTypedData": "{...}" } }
 ```
+Request rules: `expireAt` (unix seconds) is valid only with `orderType: "limit"` (a market request carrying it is rejected, because Flash answers 400); the backend requires it to be 60 s to 30 d from now (`MIN_LIMIT_EXPIRY_SECONDS`, `MAX_LIMIT_EXPIRY_SECONDS`) and omits it for good-till-cancelled. `slippage` must satisfy 0 < x <= 1.
+
+Response factors (all `null` when not applicable; the backend always emits every key):
+
+| Field | Meaning |
+| --- | --- |
+| `recommendedSlippage` | Flash's own suggestion (about `0.15` for small market orders); `null` for limit. It ignores the `maxSlippage` we send |
+| `slippage` | the `maxSlippage` we sent; `null` for limit |
+| `spendUsd`, `receiveUsd` | Flash `from.notional` and `to.notional` |
+| `minReceive` | market: `to.amount * (1 - slippage)` floored to token decimals; limit: equals `receive.amount` |
+| `effectivePriceUsd` | `spend.amount / receive.amount`, 8 decimals, `null` if receive is zero |
+| `marketPriceUsd` | `to.notional / to.amount` for market; `null` for limit |
+| `limitPriceUsd` | echo of the limit price; `null` for market |
+| `orderDeadline` | unix seconds from `message.deadline` in the order typed data; `null` when absent or at or above 2^40 (the good-till-cancelled sentinel 281474976710655) |
+
+Cost facts: Flash reports `fees.estimatedFeeNotional` as `"0"` on market quotes because gas is embedded in the rate; the real cost is `spendUsd - receiveUsd` (about $0.04 on $2 and $5). `estimatedPriceImpact` can be negative upstream and is clamped to `"0"`. Amount strings can carry 36+ decimals and are clamped to token decimals before they are validated. A limit price at or above market is marketable and fills at once.
+
 `steps.*TypedData` are JSON **strings**. The frontend parses them and passes them to `eth_signTypedData_v4` unchanged. `approveTx` is sent as a normal wallet transaction on Base before signing.
 
 **`POST /flash/order`**
@@ -127,18 +163,22 @@ Status: `open` before `resolveTime`; `awaiting` after it until CRE reports; `res
 
 | Ours | Flash |
 | --- | --- |
-| `symbol` (ETH) | `targetAsset` = WETH address; `targetChain` = `base` |
+| `symbol` (ETH, BTC, DEGEN, BRETT) | `targetAsset` = the token's `address` from `tokens.json` (WETH, cbBTC, ...); `targetChain` = `base` |
 | fixed | `contraAsset` = USDC address; `contraChain` = `base` |
 | `side` | `side` |
 | `amount` | `qty` (spent asset: USDC on buy) |
 | `orderType` | `orderType` (`market` or `limit`) |
-| `limitPriceUsd` | `limitNotionalPrice` |
+| `limitPriceUsd` | `limitNotionalPrice` (never `limitCrossPrice`) |
+| `expireAt` (limit only) | `expireTime` as an ISO timestamp; never sent for market orders |
 | `slippage` | `maxSlippage` |
 | `walletAddress` | `funderAddress` |
 | quote `evm.approveTx` | `steps.approveTx` |
 | quote `evm.permitTypedData` | `steps.permitTypedData` |
 | quote `evm.orderTypedData` | `steps.orderTypedData` |
 | order `orderSignature` | `userSignature` (+ echo `evmOrderTypedData` from the stored quote) |
+| quote `to.notional` / `from.notional` | `receiveUsd` / `spendUsd` |
+| quote `recommendedSlippage` | `recommendedSlippage` |
+| quote `evm.orderTypedData` `message.deadline` | `orderDeadline` |
 | order `permitSignature` | `evmPermitSignature` (+ echo `evmPermitTypedData`) |
 
-Flash does not return an expiry; the backend sets `expiresAt` to quote time + 60 s. Record any difference you observe in `docs/GATE0.md`.
+Flash does not return a quote expiry field; the backend sets `expiresAt` to quote time + 60 s. The order's own deadline lives inside the signed typed data (`message.deadline`, about 5 minutes for market orders, the 2^48-1 sentinel for good-till-cancelled limits) and is surfaced as `orderDeadline`. Flash `GET /search` is not eligible for our key (403), so stats come from CoinGecko, not Flash. Record any difference you observe in `docs/GATE0.md`.

@@ -81,13 +81,19 @@ export interface Placement {
 }
 
 const GAP_PX = 8;
-const MARGIN_PX = 12;
+export const CARD_MARGIN_PX = 12;
 
-/** Below the tag with an 8 px gap; above it when there is less than the card's height below; clamped to the viewport. */
+/**
+ * Below the tag with an 8 px gap; above it when only that side fits; when neither does, the side with more room.
+ * Top is always clamped so the card (and its buttons) stays inside the viewport.
+ */
 export function placeCard(anchor: AnchorRect, viewport: { width: number; height: number }, card: { width: number; height: number }): Placement {
-  const below = anchor.bottom + GAP_PX;
-  const fitsBelow = viewport.height - anchor.bottom - GAP_PX >= card.height;
-  const top = fitsBelow ? below : Math.max(MARGIN_PX, anchor.top - GAP_PX - card.height);
-  const left = Math.min(Math.max(MARGIN_PX, anchor.left), viewport.width - card.width - MARGIN_PX);
-  return { left: Math.max(MARGIN_PX, left), top };
+  const roomBelow = viewport.height - anchor.bottom - GAP_PX;
+  const roomAbove = anchor.top - GAP_PX;
+  const useBelow = roomBelow >= card.height || (roomAbove < card.height && roomBelow >= roomAbove);
+  const wanted = useBelow ? anchor.bottom + GAP_PX : anchor.top - GAP_PX - card.height;
+  const maxTop = Math.max(CARD_MARGIN_PX, viewport.height - card.height - CARD_MARGIN_PX);
+  const top = Math.min(Math.max(CARD_MARGIN_PX, wanted), maxTop);
+  const left = Math.min(Math.max(CARD_MARGIN_PX, anchor.left), viewport.width - card.width - CARD_MARGIN_PX);
+  return { left: Math.max(CARD_MARGIN_PX, left), top };
 }
