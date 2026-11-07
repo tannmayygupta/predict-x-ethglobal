@@ -39,6 +39,7 @@ export const COPY = {
   orders_off: "Testnet-only build: orders are not sent.",
   review_only: "Review only",
   settled_by: "Settled by Chainlink CRE (simulation)",
+  minted: "Test USDC added. Place your bet.",
 } as const;
 
 export const closesIn = (time: string): string => `Closes in ${time}`;

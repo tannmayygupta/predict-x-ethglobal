@@ -31,6 +31,19 @@ Built for the ETHGlobal Mumbai hackathon. Sponsor tracks: **Chainlink CRE** and 
 
 Money rules: prediction pools use **free test funds on Base Sepolia**. Swap quotes come from Definitive Flash (Base mainnet prices); this build never submits an order (`FLASH_ORDERS_ENABLED=false`), so no mainnet funds are ever used.
 
+## Try it live
+
+- **App:** https://predictx-tawny.vercel.app (landing page, pools, Predict, Swap, AI, API playground, faucet)
+- **Chrome extension (download):** [predictx-extension.zip](https://predictx-tawny.vercel.app/predictx-extension.zip)
+
+Install the extension (2 minutes):
+
+1. Download and unzip [predictx-extension.zip](https://predictx-tawny.vercel.app/predictx-extension.zip).
+2. Open `chrome://extensions`, turn on **Developer mode**, press **Load unpacked** and pick the unzipped folder.
+3. Open [x.com](https://x.com). Press the **PredictX** button (bottom right), or hover a `$ETH` cashtag in any post.
+
+To place a bet you need MetaMask on **Base Sepolia**, a little test ETH for gas (any Base Sepolia faucet) and test USDC. The bet box and the [faucet page](https://predictx-tawny.vercel.app/faucet) both have a **Get test USDC** button.
+
 ## Live on Base Sepolia
 
 | Contract | Address |

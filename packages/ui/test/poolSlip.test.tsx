@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { fixtures, type Pool, type Position } from "@predictx/shared";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as actions from "../src/actions";
 import { PoolSlip, type PoolSlipProps } from "../src/components/PoolSlip";
 import { createChainClients } from "../src/chain";
 import type { WalletController, WalletState } from "../src/wallet";
@@ -175,5 +176,45 @@ describe("PoolSlip failure handling (code-review fixes)", () => {
     slip({ pool: pool(), controller: declined });
     fireEvent.click(screen.getByRole("button", { name: "Switch to Base Sepolia" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("You rejected the request"));
+  });
+});
+
+describe("PoolSlip one-click test USDC", () => {
+  const noUsdc = async () => {
+    const { UiError } = await import("../src/errors");
+    return controller({}, { session: () => { throw new UiError("NEED_USDC", "x"); } });
+  };
+
+  it("offers a button, not just a link, when the wallet has no test USDC, and mints in place", async () => {
+    const mint = vi.spyOn(actions, "mintTestUsdc").mockResolvedValue("0x01");
+    const fake = await noUsdc();
+    // the first call (placing the bet) fails with NEED_USDC; minting then uses a working session
+    let calls = 0;
+    const wallet = { ...fake, session: () => { calls += 1; if (calls === 1) return fake.session(); return {} as never; } };
+    slip({ pool: pool(), controller: wallet });
+    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Bet YES" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Get test USDC" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Get test USDC" }));
+    await waitFor(() => expect(mint).toHaveBeenCalledWith(expect.anything(), actions.FAUCET_MINT_USDC));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Test USDC added. Place your bet."));
+    expect(screen.queryByRole("button", { name: "Get test USDC" })).toBeNull();
+    mint.mockRestore();
+  });
+
+  it("if minting fails (for example no gas) it says why and keeps the faucet link as a fallback", async () => {
+    const { UiError } = await import("../src/errors");
+    const mint = vi.spyOn(actions, "mintTestUsdc").mockRejectedValue(new UiError("NO_GAS", "Your wallet needs Base Sepolia ETH to pay for gas."));
+    const fake = await noUsdc();
+    let calls = 0;
+    const wallet = { ...fake, session: () => { calls += 1; if (calls === 1) return fake.session(); return {} as never; } };
+    slip({ pool: pool(), controller: wallet });
+    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Bet YES" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Get test USDC" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Get test USDC" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("needs Base Sepolia ETH"));
+    expect((screen.getByRole("link", { name: "Open faucet" }) as HTMLAnchorElement).href).toContain("/faucet");
+    mint.mockRestore();
   });
 });

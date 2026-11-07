@@ -1,6 +1,6 @@
 import { formatUsdc, toUsdcUnits, type Pool, type Position } from "@predictx/shared";
 import { useState, type CSSProperties } from "react";
-import { claim, refund, stake, type StakeStep } from "../actions";
+import { FAUCET_MINT_USDC, claim, mintTestUsdc, refund, stake, type StakeStep } from "../actions";
 import type { ChainClients } from "../chain";
 import { COPY, approveAmount, claimAmount, closesIn, refundAmount } from "../copy";
 import { UiError, toUiError } from "../errors";
@@ -76,21 +76,47 @@ function WalletGate({ controller, chain }: { controller: WalletController; chain
   return null;
 }
 
-function ErrorLine({ error, faucetUrl }: { error: UiError | null; faucetUrl: string }) {
-  if (!error || error.code === "USER_REJECTED") return error ? <Notice kind="info">{error.message}</Notice> : null;
-  if (error.code === "NEED_USDC") {
-    return (
-      <Notice kind="warn" action={<a href={faucetUrl} target="_blank" rel="noreferrer noopener" className="text-amber underline">{COPY.get_test_usdc}</a>}>
+/** The wallet has no test USDC: one button mints some right here, so the user never has to leave the post. */
+function FundNotice({ controller, faucetUrl, onFunded }: { controller: WalletController; faucetUrl: string; onFunded(): void }) {
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<UiError | null>(null);
+  const mint = (): void => {
+    setBusy(true);
+    setFailure(null);
+    // session() is read inside the chain so a wallet that vanished becomes an error, not a stuck spinner.
+    Promise.resolve()
+      .then(() => mintTestUsdc(controller.session(), FAUCET_MINT_USDC))
+      .then(onFunded)
+      .catch((err: unknown) => setFailure(toUiError(err)))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <div className="flex flex-col gap-2">
+      <Notice kind="warn" action={<Button size="sm" variant="secondary" loading={busy} onClick={mint}>{busy ? COPY.waiting_wallet : COPY.get_test_usdc}</Button>}>
         {COPY.need_usdc}
       </Notice>
-    );
-  }
+      {failure ? (
+        <Notice
+          kind={failure.code === "USER_REJECTED" ? "info" : "error"}
+          action={<a href={faucetUrl} target="_blank" rel="noreferrer noopener" className="text-amber underline">Open faucet</a>}
+        >
+          {failure.message}
+        </Notice>
+      ) : null}
+    </div>
+  );
+}
+
+function ErrorLine({ error, controller, faucetUrl, onFunded = () => undefined }: { error: UiError | null; controller: WalletController; faucetUrl: string; onFunded?: () => void }) {
+  if (!error || error.code === "USER_REJECTED") return error ? <Notice kind="info">{error.message}</Notice> : null;
+  if (error.code === "NEED_USDC") return <FundNotice controller={controller} faucetUrl={faucetUrl} onFunded={onFunded} />;
   return <Notice kind="error">{error.message}</Notice>;
 }
 
 function BetForm({ pool, controller, chain, faucetUrl, onChanged }: PoolSlipProps) {
   const { wallet, busy, setBusy, error, setError } = useTx(controller);
   const [amount, setAmount] = useState("");
+  const [funded, setFunded] = useState(false);
   const gate = <WalletGate controller={controller} chain={chain} />;
   const parsed = (() => {
     if (amount.trim() === "") return { ok: false as const, message: null };
@@ -104,6 +130,7 @@ function BetForm({ pool, controller, chain, faucetUrl, onChanged }: PoolSlipProp
   const bet = (isYes: boolean): void => {
     if (!parsed.ok) return;
     setError(null);
+    setFunded(false);
     setBusy("approving");
     const onStep = (step: StakeStep): void => setBusy(step);
     Promise.resolve()
@@ -122,7 +149,8 @@ function BetForm({ pool, controller, chain, faucetUrl, onChanged }: PoolSlipProp
       <TextField label="Amount" value={amount} onChange={setAmount} inputMode="decimal" placeholder="5.00" suffix="USDC" error={parsed.ok ? null : parsed.message} disabled={busy !== null} />
       {busy === "approving" ? <Notice kind="info">{approveAmount(amount)}. {COPY.confirm_wallet}</Notice> : null}
       {busy === "staking" ? <Notice kind="info">{COPY.confirm_wallet}</Notice> : null}
-      <ErrorLine error={error} faucetUrl={faucetUrl} />
+      <ErrorLine error={error} controller={controller} faucetUrl={faucetUrl} onFunded={() => { setError(null); setFunded(true); }} />
+      {funded && !error ? <Notice kind="info">{COPY.minted}</Notice> : null}
       {ready ? (
         <div className="flex gap-2">
           <div className="flex-1"><Button variant="yes" loading={busy !== null} disabled={!parsed.ok} onClick={() => bet(true)}>{busy ? COPY.waiting_wallet : COPY.bet_yes}</Button></div>
@@ -169,7 +197,7 @@ function ResolvedBlock({ pool, position, controller, chain, faucetUrl, onChanged
       </p>
       <p className="m-0 text-12 text-mute">{COPY.settled_by}</p>
       {staked ? <p className="m-0 text-14">{staked} {outcomeLine}</p> : null}
-      <ErrorLine error={error} faucetUrl={faucetUrl} />
+      <ErrorLine error={error} controller={controller} faucetUrl={faucetUrl} />
       {claimable !== "0" ? <ClaimButton controller={controller} chain={chain} busy={busy === "claiming"} label={claimAmount(formatUsdc(claimable))} onClick={run} /> : null}
     </div>
   );
@@ -190,7 +218,7 @@ function VoidBlock({ pool, position, controller, chain, faucetUrl, onChanged }: 
   return (
     <div className="flex flex-col gap-2">
       <p className="m-0 text-14 text-text">{COPY.void_note}</p>
-      <ErrorLine error={error} faucetUrl={faucetUrl} />
+      <ErrorLine error={error} controller={controller} faucetUrl={faucetUrl} />
       {refundable !== "0" ? <ClaimButton controller={controller} chain={chain} busy={busy === "refunding"} label={refundAmount(formatUsdc(refundable))} onClick={run} /> : null}
     </div>
   );

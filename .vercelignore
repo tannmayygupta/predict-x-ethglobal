@@ -1,0 +1,21 @@
+# Never upload secrets or local state with `vercel deploy`. Environment values live in the Vercel project settings.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+.vercel
+.git
+
+# Local state and bulk that no build needs
+**/node_modules
+**/dist
+**/coverage
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
+contracts/lib
+contracts/out
+contracts/cache
+contracts/broadcast

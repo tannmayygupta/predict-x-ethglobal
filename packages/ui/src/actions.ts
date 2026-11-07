@@ -20,6 +20,8 @@ export interface Session {
 
 /** The faucet contract caps one mint at 1,000 USDC (API_CONTRACT section 4). */
 export const MAX_MINT_USDC = "1000";
+/** What the one-click "Get test USDC" button mints. */
+export const FAUCET_MINT_USDC = "100";
 const WRONG_NETWORK_MESSAGE = "Switch your wallet to Base Sepolia.";
 
 export function accountAddress(session: Session): Address {
